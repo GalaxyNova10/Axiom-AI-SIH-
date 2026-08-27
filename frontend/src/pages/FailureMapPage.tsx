@@ -1,13 +1,41 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useDemoContext } from '../context/DemoContext';
 import StatusBadge from '../components/StatusBadge';
-import { Map } from 'lucide-react';
-import type { FailureHotspot } from '../types/api';
+import GlassCard from '../components/GlassCard';
+import AnimatedNumber from '../components/AnimatedNumber';
+import HotspotTreemap from '../components/charts/HotspotTreemap';
+import { Map, X, Cpu, AlertTriangle } from 'lucide-react';
+import type { VendorScorecard, VendorFailureMap, FailureHotspot } from '../types/api';
+
+const getSeverityColor = (s: string) => s === 'CRITICAL' ? 'var(--critical)' : s === 'DEGRADED' ? 'var(--degraded)' : s === 'WATCH' ? 'var(--watch)' : 'var(--eligible)';
+const getSeverityBg = (s: string) => s === 'CRITICAL' ? 'var(--critical-bg)' : s === 'DEGRADED' ? 'var(--degraded-bg)' : s === 'WATCH' ? 'var(--watch-bg)' : 'var(--eligible-bg)';
+const getSeverityBorder = (s: string) => s === 'CRITICAL' ? 'var(--critical-border)' : s === 'DEGRADED' ? 'var(--degraded-border)' : s === 'WATCH' ? 'var(--watch-border)' : 'var(--eligible-border)';
+
+const container = { hidden: {}, visible: { transition: { staggerChildren: 0.04 } } };
+const item = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
+
+const MODEL_NAMES: Record<string, string> = {
+  VendorA: 'FinScore Enterprise',
+  VendorB: 'CredVeda AI (Selected)',
+  VendorC: 'IndicPay Neural',
+};
 
 export default function FailureMapPage() {
-  const { data } = useDemoContext();
-  const [selectedVendor, setSelectedVendor] = useState<string>('');
+  const { data, loading } = useDemoContext();
+  const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
   const [selectedHotspot, setSelectedHotspot] = useState<FailureHotspot | null>(null);
+
+  if (loading && !data) {
+    return (
+      <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <span className="spinner" style={{ width: '32px', height: '32px', marginBottom: '16px' }} />
+          <p className="font-subheading" style={{ color: 'var(--text-secondary)' }}>Loading failure cartography...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!data) {
     return (
@@ -17,184 +45,194 @@ export default function FailureMapPage() {
     );
   }
 
-  const vendors = data.vendors ?? [];
-  const failureMaps = data.failure_maps ?? [];
-  const activeVendorId = selectedVendor || vendors[0]?.vendor_id || '';
-  const currentMap = failureMaps.find(f => f.vendor_id === activeVendorId);
-  const hotspots = currentMap?.hotspots ?? [];
-
-  const getSeverityBg = (sev: string) => {
-    if (sev === 'CRITICAL') return 'var(--critical-bg)';
-    if (sev === 'DEGRADED') return 'var(--degraded-bg)';
-    if (sev === 'WATCH') return 'var(--watch-bg)';
-    return 'var(--surface)';
-  };
-  const getSeverityBorder = (sev: string) => {
-    if (sev === 'CRITICAL') return 'var(--critical-border)';
-    if (sev === 'DEGRADED') return 'var(--degraded-border)';
-    if (sev === 'WATCH') return 'var(--watch-border)';
-    return 'var(--border-subtle)';
-  };
-  const getSeverityColor = (sev: string) => {
-    if (sev === 'CRITICAL') return 'var(--critical)';
-    if (sev === 'DEGRADED') return 'var(--degraded)';
-    if (sev === 'WATCH') return 'var(--watch)';
-    return 'var(--eligible)';
-  };
+  const vendorsList: VendorScorecard[] = data.vendors ?? [];
+  const failureMapsList: VendorFailureMap[] = data.failure_maps ?? [];
+  const activeVendorId = selectedVendor ?? (vendorsList.find(v => v.vendor_id === 'VendorB')?.vendor_id || vendorsList[0]?.vendor_id);
+  const currentMap = failureMapsList.find(f => f.vendor_id === activeVendorId);
+  const hotspots: FailureHotspot[] = Array.isArray(currentMap?.hotspots) ? currentMap.hotspots : [];
 
   return (
-    <div className="page animate-in">
-      <div style={{ marginBottom: '32px' }}>
-        <div className="font-label" style={{ marginBottom: '6px' }}>CARTOGRAPHY</div>
-        <h1 className="font-display" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Map size={28} color="var(--accent)" /> Failure Cartography
-        </h1>
-        <p className="font-subheading" style={{ marginTop: '8px' }}>
-          Where does the system break? Performance heatmap across all 24 deployment strata.
-        </p>
-      </div>
+    <motion.div className="page" variants={container} initial="hidden" animate="visible">
+      <motion.div variants={item} style={{ marginBottom: '32px' }}>
+        <div className="font-label" style={{ marginBottom: '6px' }}>STRESS CARTOGRAPHY</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h1 className="font-display" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Map size={28} color="var(--accent)" /> Failure Cartography & Hotspot Mapping
+            </h1>
+            <p className="font-subheading" style={{ marginTop: '8px' }}>
+              Forensic performance breakdown mapping exact failure points across orthogonal rural DPI deployment strata.
+            </p>
+          </div>
+          <span style={{ fontSize: '11px', fontWeight: 650, color: 'var(--text-muted)' }}>
+            Total Deployment Strata: <span className="font-number" style={{ color: 'var(--accent)' }}>24</span>
+          </span>
+        </div>
+      </motion.div>
 
-      {/* Vendor Selector */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        {vendors.map(v => (
-          <button
-            key={v.vendor_id}
-            className={`btn ${(activeVendorId === v.vendor_id) ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => { setSelectedVendor(v.vendor_id); setSelectedHotspot(null); }}
-          >
-            {v.display_name ?? v.vendor_id}
-          </button>
-        ))}
-      </div>
+      {/* Model Selector Tabs */}
+      <motion.div variants={item} style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        {vendorsList.map(v => {
+          const isSelected = activeVendorId === v.vendor_id;
+          const label = MODEL_NAMES[v.vendor_id] || (v.display_name ?? v.vendor_id);
+          return (
+            <button
+              key={v.vendor_id}
+              className={`btn ${isSelected ? 'btn-accent' : 'btn-secondary'}`}
+              onClick={() => { setSelectedVendor(v.vendor_id); setSelectedHotspot(null); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <Cpu size={14} /> {label}
+            </button>
+          );
+        })}
+      </motion.div>
 
-      {/* Summary Strip */}
+      {/* Summary KPI Strip */}
       {currentMap && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-          <div className="card" style={{ padding: '14px' }}>
+        <motion.div variants={item} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+          <GlassCard style={{ padding: '14px' }} hover={false}>
             <div className="metric metric-sm">
-              <span className="metric-label">Overall Accuracy</span>
-              <span className="metric-value font-number">{currentMap.overall_accuracy?.toFixed(1) ?? '—'}%</span>
+              <span className="metric-label">Mean Stress Accuracy</span>
+              <AnimatedNumber value={currentMap.overall_accuracy != null ? currentMap.overall_accuracy : 0} decimals={1} suffix="%" className="metric-value font-number" />
             </div>
-          </div>
-          <div className="card" style={{ padding: '14px', borderColor: 'var(--critical-border)' }}>
+          </GlassCard>
+          <GlassCard style={{ padding: '14px', borderColor: 'var(--critical-border)' }} hover={false}>
             <div className="metric metric-sm">
-              <span className="metric-label" style={{ color: 'var(--critical)' }}>Critical</span>
-              <span className="metric-value font-number" style={{ color: 'var(--critical)' }}>{currentMap.critical_hotspots_count ?? 0}</span>
+              <span className="metric-label" style={{ color: 'var(--critical)' }}>Critical Failure Strata</span>
+              <AnimatedNumber value={currentMap.critical_hotspots_count ?? 0} className="metric-value font-number" style={{ color: 'var(--critical)' }} />
             </div>
-          </div>
-          <div className="card" style={{ padding: '14px', borderColor: 'var(--degraded-border)' }}>
+          </GlassCard>
+          <GlassCard style={{ padding: '14px', borderColor: 'var(--degraded-border)' }} hover={false}>
             <div className="metric metric-sm">
-              <span className="metric-label" style={{ color: 'var(--degraded)' }}>Degraded</span>
-              <span className="metric-value font-number" style={{ color: 'var(--degraded)' }}>{currentMap.degraded_hotspots_count ?? 0}</span>
+              <span className="metric-label" style={{ color: 'var(--degraded)' }}>Degraded Strata</span>
+              <AnimatedNumber value={currentMap.degraded_hotspots_count ?? 0} className="metric-value font-number" style={{ color: 'var(--degraded)' }} />
             </div>
-          </div>
-          <div className="card" style={{ padding: '14px', borderColor: 'var(--watch-border)' }}>
+          </GlassCard>
+          <GlassCard style={{ padding: '14px' }} hover={false}>
             <div className="metric metric-sm">
-              <span className="metric-label" style={{ color: 'var(--watch)' }}>Watch</span>
-              <span className="metric-value font-number" style={{ color: 'var(--watch)' }}>{currentMap.watch_hotspots_count ?? 0}</span>
-            </div>
-          </div>
-          <div className="card" style={{ padding: '14px' }}>
-            <div className="metric metric-sm">
-              <span className="metric-label">Status</span>
+              <span className="metric-label">DFS Gate Status</span>
               <div style={{ marginTop: '4px' }}><StatusBadge status={currentMap.overall_status} /></div>
             </div>
-          </div>
-        </div>
+          </GlassCard>
+        </motion.div>
       )}
 
-      {/* Heatmap Grid */}
+      {/* Treemap */}
+      {hotspots.length > 0 && (
+        <motion.div variants={item} style={{ marginBottom: '24px' }}>
+          <GlassCard hover={false}>
+            <div className="card-header">
+              <span style={{ fontWeight: 700 }}>Compound Stress Impact Treemap</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Proportional severity weighting</span>
+            </div>
+            <HotspotTreemap hotspots={hotspots} />
+          </GlassCard>
+        </motion.div>
+      )}
+
+      {/* Grid of Strata */}
       {hotspots.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
-          No failure hotspots found for this vendor.
-        </div>
+        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>No failure hotspots detected under current pilot constraints.</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px' }}>
+        <motion.div variants={item} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px' }}>
           {hotspots.map((hs, i) => (
-            <div
+            <motion.div
               key={i}
-              className="stagger"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.02, duration: 0.3 }}
+              whileHover={{ y: -2, boxShadow: 'var(--shadow-md)' }}
+              onClick={() => setSelectedHotspot(hs)}
               style={{
                 background: getSeverityBg(hs.severity),
                 border: `1px solid ${getSeverityBorder(hs.severity)}`,
                 borderLeft: `4px solid ${getSeverityColor(hs.severity)}`,
                 borderRadius: '8px',
-                padding: '10px 10px 10px 12px',
+                padding: '12px 10px',
                 cursor: 'pointer',
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                animationDelay: `${i * 20}ms`,
               }}
-              onClick={() => setSelectedHotspot(hs)}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
             >
-              <div style={{ fontWeight: 800, fontSize: '18px', color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: '2px' }}>
+              <div style={{ fontWeight: 800, fontSize: '17px', color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: '2px' }}>
                 {hs.accuracy.toFixed(1)}%
               </div>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: getSeverityColor(hs.severity), marginBottom: '6px', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: '10px', fontWeight: 750, color: getSeverityColor(hs.severity), marginBottom: '6px', textTransform: 'uppercase' }}>
                 {hs.severity}
               </div>
-              <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', lineHeight: 1.3 }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.35 }}>
                 {hs.stratum_id.replace(/_/g, ' ').toLowerCase()}
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
-      {/* Hotspot Detail Drawer */}
-      {selectedHotspot && (
-        <>
-          <div
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.2)', zIndex: 98, backdropFilter: 'blur(2px)' }}
-            onClick={() => setSelectedHotspot(null)}
-          />
-          <div style={{
-            position: 'fixed', top: 0, right: 0, bottom: 0, width: '380px', maxWidth: '100vw',
-            background: 'var(--surface)', borderLeft: '1px solid var(--border)',
-            boxShadow: 'var(--shadow-lg)', zIndex: 99, padding: '32px 24px',
-            overflowY: 'auto', animation: 'fadeIn 0.2s ease'
-          }}>
-            <button className="btn btn-ghost btn-sm" style={{ position: 'absolute', top: '16px', right: '16px' }} onClick={() => setSelectedHotspot(null)}>
-              ✕ Close
-            </button>
-            <div className="font-label" style={{ marginBottom: '8px' }}>DEPLOYMENT CONDITION</div>
-            <h2 className="font-mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)', marginBottom: '24px', lineHeight: 1.5, wordBreak: 'break-word' }}>
-              {selectedHotspot.stratum_id.replace(/_/g, ' + ')}
-            </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-              <div className="metric">
-                <span className="metric-label">Accuracy</span>
-                <span className="metric-value font-number" style={{ color: selectedHotspot.severity === 'CRITICAL' ? 'var(--critical)' : 'var(--text)' }}>
-                  {selectedHotspot.accuracy.toFixed(2)}%
-                </span>
-              </div>
-              <div className="metric">
-                <span className="metric-label">Severity</span>
-                <div style={{ marginTop: '4px' }}><StatusBadge status={selectedHotspot.severity} /></div>
-              </div>
-              {selectedHotspot.failure_rate != null && (
+      {/* Forensic Detail Drawer */}
+      <AnimatePresence>
+        {selectedHotspot && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ position: 'fixed', inset: 0, background: 'var(--bg-overlay)', zIndex: 98, backdropFilter: 'blur(4px)' }}
+              onClick={() => setSelectedHotspot(null)}
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              style={{
+                position: 'fixed',
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: '400px',
+                maxWidth: '100vw',
+                background: 'var(--bg-card)',
+                borderLeft: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-xl)',
+                zIndex: 99,
+                padding: '32px 24px',
+                overflowY: 'auto',
+              }}
+            >
+              <button className="btn btn-ghost btn-sm" style={{ position: 'absolute', top: '16px', right: '16px' }} onClick={() => setSelectedHotspot(null)}>
+                <X size={16} /> Close
+              </button>
+              <div className="font-label" style={{ marginBottom: '8px' }}>COMPOUND DEPLOYMENT CONDITION</div>
+              <h2 className="font-mono" style={{ fontSize: '14px', fontWeight: 700, marginBottom: '24px', lineHeight: 1.5, wordBreak: 'break-word' }}>
+                {selectedHotspot.stratum_id.replace(/_/g, ' + ')}
+              </h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
                 <div className="metric">
-                  <span className="metric-label">Failure Rate</span>
-                  <span className="metric-value font-number">{(selectedHotspot.failure_rate * 100).toFixed(1)}%</span>
+                  <span className="metric-label">Observed Accuracy</span>
+                  <span className="metric-value font-number" style={{ color: selectedHotspot.severity === 'CRITICAL' ? 'var(--critical)' : 'var(--text-primary)' }}>
+                    {selectedHotspot.accuracy.toFixed(2)}%
+                  </span>
+                </div>
+                <div className="metric">
+                  <span className="metric-label">Severity Level</span>
+                  <div style={{ marginTop: '4px' }}><StatusBadge status={selectedHotspot.severity} /></div>
+                </div>
+              </div>
+              {selectedHotspot.reason && (
+                <div style={{ background: 'var(--bg-elevated)', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px solid var(--border)' }}>
+                  <div className="font-label" style={{ marginBottom: '6px' }}>Failure Root Cause Diagnosis</div>
+                  <p className="font-body" style={{ fontSize: '13px', lineHeight: 1.5 }}>{selectedHotspot.reason}</p>
                 </div>
               )}
-              {selectedHotspot.confidence != null && (
-                <div className="metric">
-                  <span className="metric-label">Confidence</span>
-                  <span className="metric-value font-number">{selectedHotspot.confidence.toFixed(1)}%</span>
-                </div>
-              )}
-            </div>
-            {selectedHotspot.reason && (
-              <div style={{ background: 'var(--surface-muted)', padding: '16px', borderRadius: '8px' }}>
-                <div className="font-label" style={{ marginBottom: '6px' }}>Reason</div>
-                <p className="font-body" style={{ color: 'var(--text-secondary)' }}>{selectedHotspot.reason}</p>
+              <div style={{ background: 'var(--bg-sunken)', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                <div className="font-label" style={{ marginBottom: '4px' }}>DFS Policy Action</div>
+                <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  Deployment in pilot zones with matching condition combinations is blocked until structured remediation is certified.
+                </p>
               </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

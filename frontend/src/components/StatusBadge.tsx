@@ -1,5 +1,5 @@
-// ============================================================
-// StatusBadge — semantic governance state indicator.
+﻿// ============================================================
+// StatusBadge â€” semantic governance state indicator.
 // ALWAYS pair color with a text label for accessibility.
 // ============================================================
 
@@ -74,3 +74,4 @@ export default function StatusBadge({ status, dot, size }: Props) {
     </span>
   );
 }
+

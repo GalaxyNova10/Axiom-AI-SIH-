@@ -1,224 +1,388 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useDemoContext } from '../context/DemoContext';
-import { runDemoEvaluation } from '../services/api';
+﻿// ============================================================
+// Axiom AI — Fintech Model Evaluation Hub (DashboardPage)
+// ============================================================
+import { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+import {
+  PlusCircle, Hexagon, Shield,
+  Layers, RefreshCw, AlertTriangle,
+  Landmark, Cpu, FileCheck,
+} from 'lucide-react';
+import GlassCard from '../components/GlassCard';
 import StatusBadge from '../components/StatusBadge';
-import { Play, AlertTriangle, ChevronRight, Activity, Shield, Users, Map } from 'lucide-react';
+import AnimatedNumber from '../components/AnimatedNumber';
+import StartupLifecycleStepper from '../components/StartupLifecycleStepper';
+import StartupInputModal from '../components/StartupInputModal';
+import Fintech15TestMatrix from '../components/Fintech15TestMatrix';
+import GovernmentPilotTwinCard from '../components/GovernmentPilotTwinCard';
+import EvidenceConfidenceGauge from '../components/EvidenceConfidenceGauge';
+import EvidenceClassificationPanel from '../components/EvidenceClassificationPanel';
+import { runFintechEvaluation, getLatestFintechEvaluation } from '../services/api';
+import type { FintechEvaluationResult, FintechStartupInput } from '../types/api';
+
+const container = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
+const item = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
 
 export default function DashboardPage() {
-  const { data, loading, error, setDemoData, setLoading, setError } = useDemoContext();
-  const navigate = useNavigate();
-  const [running, setRunning] = useState(false);
+  const [evaluation, setEvaluation] = useState<FintechEvaluationResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeStage, setActiveStage] = useState(3);
 
-  const handleRunDemo = async () => {
-    setRunning(true);
+  // Auto-load latest evaluation on mount if available, or load default preset
+  useEffect(() => {
+    async function init() {
+      try {
+        const latest = await getLatestFintechEvaluation();
+        setEvaluation(latest);
+      } catch {
+        // Run canonical evaluation by default
+        handleRunDefault();
+      }
+    }
+    init();
+  }, []);
+
+  const handleRunDefault = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await runDemoEvaluation();
-      setDemoData(res);
-    } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message ?? 'Failed to run demo evaluation. Is the backend running?';
-      setError(msg);
+      const preset: FintechStartupInput = {
+        startup_name: 'CredVeda AI',
+        model_name: 'Vernacular MSME Underwriting & Credit Risk Engine',
+        department: 'Department of Financial Services',
+        district: 'DFS Digital Finance Pilot District (Tier-3/4)',
+        claimed_accuracy: 94.5,
+        seed: 42,
+      };
+      const res = await runFintechEvaluation(preset);
+      setEvaluation(res);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to execute fintech evaluation.');
     } finally {
-      setRunning(false);
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', gap: '20px' }}>
-        <div style={{ width: '40px', height: '40px' }} className="spinner" />
-        <p className="font-subheading">Executing 14-stage deterministic evaluation pipeline…</p>
-      </div>
-    );
-  }
+  const handleCustomSubmit = async (input: FintechStartupInput) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await runFintechEvaluation(input);
+      setEvaluation(res);
+    } catch (err: any) {
+      setError(err?.message || 'Evaluation failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  if (!data && !error) {
-    return <LandingScreen onRun={handleRunDemo} running={running} />;
-  }
-
-  if (error) {
-    return (
-      <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', gap: '24px' }}>
-        <div className="card" style={{ maxWidth: '480px', width: '100%', borderColor: 'var(--critical-border)', textAlign: 'center' }}>
-          <Shield size={32} color="var(--critical)" style={{ margin: '0 auto 16px' }} />
-          <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px', color: 'var(--text)' }}>Evaluation Failed</h2>
-          <p className="font-body" style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>{error}</p>
-          <button className="btn btn-primary" onClick={handleRunDemo} disabled={running}>
-            {running ? 'Retrying…' : 'Retry'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) return null;
-
-  const vendors = data.vendors ?? [];
-  const procurement = data.procurement ?? {};
-  const failureMaps = data.failure_maps ?? [];
-  const evalId = vendors[0]?.evaluation_id ?? 'demo';
-
-  const eligibleCount = vendors.filter(v => (procurement[v.vendor_id]?.decision ?? v.procurement_recommendation) === 'ELIGIBLE').length;
-  const rejectedCount = vendors.length - eligibleCount;
-  const totalCritical = failureMaps.reduce((sum, fm) => sum + (fm.critical_hotspots_count ?? 0), 0);
+  const isEligible = evaluation?.procurement_verdict === 'ELIGIBLE';
 
   return (
-    <div className="page animate-in">
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <div className="font-label" style={{ marginBottom: '6px' }}>AXIOM-DEMO-001 · EVIDENCE-GATED EVALUATION</div>
-          <h1 className="font-display">Procurement Intelligence</h1>
-          <p className="font-subheading" style={{ marginTop: '8px' }}>
-            Rural Agricultural Logistics · Department of Agricultural Logistics
-          </p>
-        </div>
-        <button className="btn btn-secondary" onClick={handleRunDemo} disabled={running}>
-          <Play size={14} />
-          {running ? 'Running…' : 'Re-run Demo'}
-        </button>
-      </div>
-
-      {/* KPI Strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '32px' }}>
-        <KpiCard label="Vendors Evaluated" value={String(vendors.length)} icon={<Users size={16} />} />
-        <KpiCard label="Eligible" value={String(eligibleCount)} icon={<Shield size={16} />} color="var(--eligible)" />
-        <KpiCard label="Rejected" value={String(rejectedCount)} icon={<Shield size={16} />} color="var(--critical)" />
-        <KpiCard label="Deployment Strata" value="24" icon={<Map size={16} />} />
-        <KpiCard label="Critical Hotspots" value={String(totalCritical)} icon={<Activity size={16} />} color={totalCritical > 0 ? 'var(--critical)' : undefined} />
-      </div>
-
-      {/* Governance Principle Strip */}
-      <div className="principle-strip" style={{ marginBottom: '32px' }}>
-        AI assists · Evidence proves · Rules gate · Humans authorize
-      </div>
-
-      {/* Vendor Decision Cards */}
-      <h2 className="font-heading" style={{ marginBottom: '20px' }}>Vendor Decision Landscape</h2>
-      <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        {vendors.map((v) => {
-          const procDecision = procurement[v.vendor_id]?.decision ?? v.procurement_recommendation ?? 'PENDING';
-          const fm = failureMaps.find(f => f.vendor_id === v.vendor_id);
-          const isEligible = procDecision === 'ELIGIBLE';
-          return (
-            <article
-              key={v.vendor_id}
-              className="card card-hover"
-              style={{ cursor: 'pointer', borderColor: isEligible ? 'var(--eligible-border)' : 'var(--border)' }}
-              onClick={() => navigate(`/evaluation/${evalId}/vendors/${v.vendor_id}`)}
-              tabIndex={0}
-              onKeyDown={e => e.key === 'Enter' && navigate(`/evaluation/${evalId}/vendors/${v.vendor_id}`)}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                <div>
-                  <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{v.display_name ?? v.vendor_id}</h3>
-                  <div className="font-caption" style={{ marginTop: '2px' }}>{v.vendor_id}</div>
-                </div>
-                <StatusBadge status={procDecision} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                <div className="metric metric-sm">
-                  <span className="metric-label">Accuracy</span>
-                  <span className="metric-value font-number" style={{ color: (v.accuracy ?? 0) < 80 ? 'var(--critical)' : 'var(--text)' }}>
-                    {v.accuracy != null ? `${v.accuracy.toFixed(1)}%` : '—'}
-                  </span>
-                </div>
-                <div className="metric metric-sm">
-                  <span className="metric-label">Evidence</span>
-                  <span className="metric-value" style={{ fontSize: '13px' }}>{v.evidence_level ?? '—'}</span>
-                </div>
-                <div className="metric metric-sm">
-                  <span className="metric-label">Critical Hotspots</span>
-                  <span className="metric-value font-number" style={{ color: (fm?.critical_hotspots_count ?? 0) > 0 ? 'var(--critical)' : 'var(--text)' }}>
-                    {fm?.critical_hotspots_count ?? 0}
-                  </span>
-                </div>
-                <div className="metric metric-sm">
-                  <span className="metric-label">Confidence</span>
-                  <span className="metric-value font-number">
-                    {v.evidence_confidence != null ? `${v.evidence_confidence.toFixed(1)}%` : '—'}
-                  </span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  View details <ChevronRight size={14} />
-                </span>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-
-      {/* Narrative Callout */}
-      <div className="card animate-up" style={{ borderColor: 'var(--watch-border)', background: 'var(--watch-bg)' }}>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-          <AlertTriangle size={24} color="var(--watch)" style={{ flexShrink: 0, marginTop: '2px' }} />
+    <motion.div className="page" variants={container} initial="hidden" animate="visible">
+      {/* Top Hero Banner */}
+      <motion.div variants={item} style={{ marginBottom: '28px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '6px', color: 'var(--text)' }}>
-              Aggregate performance is not deployment safety.
-            </h3>
-            <p className="font-body" style={{ color: 'var(--text-secondary)' }}>
-              <strong>KrishiLink Technologies</strong> scores the highest overall accuracy yet receives a REJECTED 
-              recommendation. The deterministic evidence-gate detected acute compound failure under 
-              <code style={{ background: 'rgba(0,0,0,0.06)', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '12px', margin: '0 4px' }}>NOISY + LOW_END + REGIONAL</code>
-              conditions. High aggregate accuracy conceals localized catastrophic failure — which matters far more for rural deployment safety.
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: 'var(--r-md)',
+                background: 'linear-gradient(135deg, var(--accent), #8b5cf6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: 'var(--accent-glow)',
+              }}>
+                <Hexagon size={18} color="white" strokeWidth={2.5} />
+              </div>
+              <div>
+                <div className="font-label" style={{ marginBottom: '1px' }}>EVIDENCE-GATED FINTECH GOVERNANCE</div>
+                <h1 style={{
+                  fontSize: '26px',
+                  fontWeight: 800,
+                  letterSpacing: '-0.03em',
+                  lineHeight: 1.15,
+                  background: 'linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}>
+                  Fintech Model Evaluation Sandbox
+                </h1>
+              </div>
+            </div>
+            <p className="font-subheading" style={{ maxWidth: '650px', fontSize: '13.5px', marginTop: '4px' }}>
+              Government Pilot Twin stress-testing engine evaluating vernacular MSME credit underwriting across 15 real-world DPI conditions.
             </p>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function LandingScreen({ onRun, running }: { onRun: () => void; running: boolean }) {
-  return (
-    <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', textAlign: 'center' }}>
-      <div style={{ maxWidth: '580px' }}>
-        <div className="font-label" style={{ marginBottom: '12px', color: 'var(--accent)' }}>AXIOM-DEMO-001</div>
-        <h1 className="font-display" style={{ fontSize: '36px', marginBottom: '16px' }}>
-          Rural Agricultural Logistics
-        </h1>
-        <h2 style={{ fontSize: '18px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '32px', lineHeight: 1.5 }}>
-          Evidence-Gated Procurement & Deployment Governance
-        </h2>
-        <p className="font-body" style={{ color: 'var(--text-muted)', marginBottom: '40px', maxWidth: '460px', margin: '0 auto 40px' }}>
-          Evaluates three AI vendors across 24 deployment strata — intermittent connectivity, low-end devices, 
-          regional languages, and degraded inputs — then applies deterministic procurement gates and human authorization.
-        </p>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '48px' }}>
-          <button id="run-demo-btn" className="btn btn-primary btn-lg" onClick={onRun} disabled={running}>
-            {running
-              ? <><div style={{ width: '18px', height: '18px' }} className="spinner" /> Running Pipeline…</>
-              : <><Play size={18} /> Run Canonical Demo</>
-            }
-          </button>
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="btn btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <PlusCircle size={15} color="var(--accent)" /> Submit Startup Plan
+            </button>
+            <button
+              onClick={handleRunDefault}
+              disabled={loading}
+              className="btn btn-accent"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              {loading ? (
+                <>
+                  <span className="spinner" style={{ width: '14px', height: '14px' }} />
+                  Running 15 Tests...
+                </>
+              ) : (
+                <>
+                  <RefreshCw size={14} /> Re-Run 15 Tests
+                </>
+              )}
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', maxWidth: '440px', margin: '0 auto' }}>
-          {['AI assists', 'Evidence proves', 'Rules gate', 'Humans authorize'].map(p => (
-            <div key={p} style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 8px', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center' }}>
-              {p}
+      </motion.div>
+
+      {error && (
+        <div className="alert alert-error" style={{ marginBottom: '20px' }}>
+          <AlertTriangle size={16} /> {error}
+        </div>
+      )}
+
+      {/* Startup Lifecycle Stepper */}
+      <motion.div variants={item}>
+        <StartupLifecycleStepper
+          activeStage={activeStage}
+          onStageClick={(id) => setActiveStage(id)}
+          isEvaluated={!!evaluation}
+        />
+      </motion.div>
+
+      {/* Main Content when Evaluation Available */}
+      {evaluation && (
+        <>
+          {/* Active Model Summary Strip */}
+          <motion.div variants={item} style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 20px',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r-lg)',
+            marginBottom: '24px',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: 'var(--r-md)',
+                background: 'var(--bg-sunken)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Cpu size={16} color="var(--accent)" />
+              </div>
+              <div>
+                <div style={{ fontSize: '15px', fontWeight: 750, color: 'var(--text-primary)' }}>
+                  {evaluation.startup_name} · <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{evaluation.model_name}</span>
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Target: {evaluation.department} · {evaluation.district}
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function KpiCard({ label, value, icon, color }: { label: string; value: string; icon: React.ReactNode; color?: string }) {
-  return (
-    <div className="card" style={{ padding: '16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-        <span style={{ color: color ?? 'var(--text-muted)' }}>{icon}</span>
-        <span className="font-label">{label}</span>
-      </div>
-      <div style={{ fontSize: '26px', fontWeight: 700, color: color ?? 'var(--text)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
-        {value}
-      </div>
-    </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ textAlign: 'right' }}>
+                <span className="font-label">Verdict</span>
+                <div style={{ marginTop: '2px' }}>
+                  <StatusBadge status={evaluation.procurement_verdict} />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Top KPI Bento Grid */}
+          <motion.div variants={item} style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '14px',
+            marginBottom: '28px',
+          }}>
+            {/* Accuracy */}
+            <GlassCard delay={0} style={{ padding: '18px' }}>
+              <div className="metric">
+                <span className="metric-label">Tested Accuracy</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '4px' }}>
+                  <AnimatedNumber
+                    value={evaluation.overall_accuracy}
+                    decimals={1}
+                    suffix="%"
+                    className="metric-value font-number"
+                    style={{ color: evaluation.overall_accuracy >= 80 ? 'var(--eligible)' : 'var(--critical)' }}
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>claimed 94.5%</span>
+                </div>
+                <span className="metric-sub">Mean across 15 stress conditions</span>
+              </div>
+            </GlassCard>
+
+            {/* Evidence Confidence */}
+            <GlassCard delay={0.04} style={{ padding: '18px' }}>
+              <div className="metric">
+                <span className="metric-label" style={{ color: 'var(--accent)' }}>Confidence Score</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginTop: '4px' }}>
+                  <AnimatedNumber
+                    value={evaluation.evidence_confidence_score}
+                    decimals={1}
+                    suffix="%"
+                    className="metric-value font-number"
+                    style={{ color: 'var(--accent)' }}
+                  />
+                </div>
+                <span className="metric-sub">6-factor cryptographic index</span>
+              </div>
+            </GlassCard>
+
+            {/* 15-Test Pass Rate */}
+            <GlassCard delay={0.08} style={{ padding: '18px' }}>
+              <div className="metric">
+                <span className="metric-label">15-Test Pass Rate</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '4px' }}>
+                  <span className="metric-value font-number">
+                    {evaluation.passed_tests}/{evaluation.total_tests}
+                  </span>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    ({evaluation.pass_rate.toFixed(0)}%)
+                  </span>
+                </div>
+                <span className="metric-sub">SLA & Accuracy thresholds</span>
+              </div>
+            </GlassCard>
+
+            {/* Critical Failures */}
+            <GlassCard delay={0.12} style={{ padding: '18px', borderColor: evaluation.critical_failures > 0 ? 'var(--critical-border)' : undefined }}>
+              <div className="metric">
+                <span className="metric-label" style={{ color: evaluation.critical_failures > 0 ? 'var(--critical)' : 'var(--text-faint)' }}>
+                  Critical Hotspots
+                </span>
+                <div style={{ marginTop: '4px' }}>
+                  <span className="metric-value font-number" style={{ color: evaluation.critical_failures > 0 ? 'var(--critical)' : 'var(--eligible)' }}>
+                    {evaluation.critical_failures}
+                  </span>
+                </div>
+                <span className="metric-sub">Automatic gate blockers</span>
+              </div>
+            </GlassCard>
+
+            {/* Gate Status */}
+            <GlassCard delay={0.16} style={{ padding: '18px' }}>
+              <div className="metric">
+                <span className="metric-label">Procurement Gate</span>
+                <div style={{ marginTop: '8px' }}>
+                  <span style={{
+                    fontSize: '13px',
+                    fontWeight: 800,
+                    padding: '4px 10px',
+                    borderRadius: 'var(--r-full)',
+                    background: isEligible ? 'var(--eligible-bg)' : 'var(--critical-bg)',
+                    color: isEligible ? 'var(--eligible)' : 'var(--critical)',
+                    border: `1px solid ${isEligible ? 'var(--eligible-border)' : 'var(--critical-border)'}`,
+                  }}>
+                    {evaluation.procurement_verdict}
+                  </span>
+                </div>
+                <span className="metric-sub">Deterministic calculation</span>
+              </div>
+            </GlassCard>
+          </motion.div>
+
+          {/* Section 1: 15-Point Stress Test Grid */}
+          <motion.div variants={item} style={{ marginBottom: '32px' }}>
+            <GlassCard hover={false}>
+              <div className="card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Layers size={16} color="var(--accent)" />
+                  <span style={{ fontWeight: 700, fontSize: '15px' }}>15-Point Government Stress Test Matrix</span>
+                </div>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  Evaluator Seed: <span className="font-mono">42</span>
+                </span>
+              </div>
+              <Fintech15TestMatrix tests={evaluation.test_results} />
+            </GlassCard>
+          </motion.div>
+
+          {/* Section 2: Twin Sandbox + Confidence Gauge (Side by Side) */}
+          <motion.div variants={item} style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+            gap: '20px',
+            marginBottom: '32px',
+          }}>
+            {/* Government Pilot Twin Card */}
+            <GlassCard hover={false}>
+              <div className="card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Landmark size={16} color="var(--accent)" />
+                  <span style={{ fontWeight: 700, fontSize: '15px' }}>Government Pilot Twin (DFS Sandbox)</span>
+                </div>
+              </div>
+              <GovernmentPilotTwinCard pilotTwin={evaluation.pilot_twin_parameters} />
+            </GlassCard>
+
+            {/* Evidence Confidence Gauge */}
+            <GlassCard hover={false}>
+              <div className="card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Shield size={16} color="var(--eligible)" />
+                  <span style={{ fontWeight: 700, fontSize: '15px' }}>Evidence Confidence Score Breakdown</span>
+                </div>
+              </div>
+              <EvidenceConfidenceGauge
+                score={evaluation.evidence_confidence_score}
+                breakdown={evaluation.evidence_confidence_breakdown}
+              />
+            </GlassCard>
+          </motion.div>
+
+          {/* Section 3: Evidence Generation & Classification Protocol */}
+          <motion.div variants={item} style={{ marginBottom: '32px' }}>
+            <GlassCard hover={false}>
+              <div className="card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileCheck size={16} color="var(--eligible)" />
+                  <span style={{ fontWeight: 700, fontSize: '15px' }}>Evidence Generation & 5-Tier Classification Ledger</span>
+                </div>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>AECP-5 Verified</span>
+              </div>
+              <EvidenceClassificationPanel
+                distribution={evaluation.evidence_distribution}
+                totalTests={evaluation.total_tests}
+                evaluationId={evaluation.evaluation_id}
+              />
+            </GlassCard>
+          </motion.div>
+        </>
+      )}
+
+      {/* Startup Input Modal */}
+      <StartupInputModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCustomSubmit}
+        isLoading={loading}
+      />
+    </motion.div>
   );
 }

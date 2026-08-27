@@ -1,5 +1,5 @@
-// ============================================================
-// Axiom AI — Centralized API Client
+﻿// ============================================================
+// Axiom AI â€” Centralized API Client
 // All backend communication goes through this module.
 // ============================================================
 
@@ -22,7 +22,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 // When using Vite dev proxy, base URL is empty (relative paths work).
 // In production, set VITE_API_BASE_URL=http://your-server:8000
 
-// ---- Forbidden sensitive keys — defense-in-depth sanitization ----
+// ---- Forbidden sensitive keys â€” defense-in-depth sanitization ----
 const FORBIDDEN_KEYS = new Set([
   'private_parameters',
   'raw_seed',
@@ -131,3 +131,22 @@ export const submitAuthorization = (
     method: 'POST',
     body: JSON.stringify(request),
   });
+
+
+// ============================================================
+// Fintech API Methods
+// ============================================================
+
+export const getFintechScenario = (): Promise<import('../types/api').FintechScenarioMetadata> =>
+  apiFetch('/api/v1/fintech/scenario');
+
+export const getFintechPreset = (): Promise<import('../types/api').FintechStartupInput> =>
+  apiFetch('/api/v1/fintech/preset');
+
+export const runFintechEvaluation = (
+  input: import('../types/api').FintechStartupInput
+): Promise<import('../types/api').FintechEvaluationResult> =>
+  apiFetch('/api/v1/fintech/evaluate', { method: 'POST', body: JSON.stringify(input) });
+
+export const getLatestFintechEvaluation = (): Promise<import('../types/api').FintechEvaluationResult> =>
+  apiFetch('/api/v1/fintech/latest');

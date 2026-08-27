@@ -1,5 +1,5 @@
-// ============================================================
-// Axiom AI — TypeScript API Types
+﻿// ============================================================
+// Axiom AI â€” TypeScript API Types
 // Strictly mirrors actual backend response shapes from demo_scenario.py
 // DO NOT add frontend-derived fields here.
 // ============================================================
@@ -196,4 +196,125 @@ export interface ApiError {
   status: number;
   message: string;
   detail?: unknown;
+}
+
+
+// ============================================================
+// Fintech Types — extends existing api.ts types
+// ============================================================
+
+export interface FintechTestConditions {
+  connectivity: string;
+  device: string;
+  input: string;
+}
+
+export interface FintechTestResult {
+  test_id: string;
+  code: string;
+  name: string;
+  domain: string;
+  description: string;
+  conditions: FintechTestConditions;
+  accuracy: number;
+  latency_ms: number;
+  passed: boolean;
+  severity: string;
+  evidence_level: string;
+  evidence_hash: string;
+  failure_reason?: string;
+  feature_attribution?: Record<string, number>;
+}
+
+export interface EvidenceConfidenceBreakdown {
+  evaluator_integrity: number;
+  contract_integrity: number;
+  artifact_integrity: number;
+  test_coverage: number;
+  pilot_twin_evidence: number;
+  measurement_quality: number;
+}
+
+export interface EvidenceDistribution {
+  INDEPENDENTLY_VALIDATED: number;
+  OBSERVED: number;
+  ESTIMATED: number;
+  DECLARED: number;
+  CLAIMED: number;
+}
+
+export interface PilotTwinParameters {
+  twin_id: string;
+  department: string;
+  district: string;
+  demographics: {
+    rural_borrower_pct: number;
+    unbanked_thin_file_pct: number;
+    female_borrower_pct: number;
+  };
+  infrastructure: {
+    connectivity_2g_3g_pct: number;
+    low_end_device_pct: number;
+    offline_kiosk_pct: number;
+  };
+  language_coverage: {
+    indic_dialects_tested: number;
+    primary_script: string;
+  };
+  regulatory_frame: Record<string, string>;
+}
+
+export interface FintechEvaluationResult {
+  evaluation_id: string;
+  scenario_id: string;
+  startup_name: string;
+  model_name: string;
+  department: string;
+  district: string;
+  overall_accuracy: number;
+  pass_rate: number;
+  total_tests: number;
+  passed_tests: number;
+  critical_failures: number;
+  degraded_failures: number;
+  watch_failures: number;
+  evidence_confidence_score: number;
+  evidence_confidence_breakdown: EvidenceConfidenceBreakdown;
+  evidence_distribution: EvidenceDistribution;
+  pilot_twin_parameters: PilotTwinParameters;
+  procurement_verdict: string;
+  verdict_reasons: string[];
+  test_results: FintechTestResult[];
+}
+
+export interface FintechStartupInput {
+  startup_name: string;
+  model_name: string;
+  department: string;
+  district: string;
+  claimed_accuracy: number;
+  seed?: number;
+}
+
+export interface FintechTestDefinition {
+  test_id: string;
+  code: string;
+  name: string;
+  domain: string;
+  description: string;
+  threshold_accuracy: number;
+  threshold_latency_ms: number;
+  severity_if_fail: string;
+}
+
+export interface FintechScenarioMetadata {
+  scenario_id: string;
+  scenario_name: string;
+  title: string;
+  problem_statement: string;
+  department: string;
+  district: string;
+  description: string;
+  preset: FintechStartupInput & { model_description?: string; architecture?: string; regulatory_claims?: string[] };
+  test_definitions: FintechTestDefinition[];
 }

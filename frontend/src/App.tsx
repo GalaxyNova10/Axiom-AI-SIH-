@@ -1,5 +1,5 @@
-// ============================================================
-// Axiom AI — Root App with React Router
+﻿// ============================================================
+// Axiom AI â€” Root App with React Router
 // ============================================================
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -60,3 +60,4 @@ export default function App() {
     </DemoProvider>
   );
 }
+

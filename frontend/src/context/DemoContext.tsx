@@ -1,11 +1,12 @@
-// ============================================================
+﻿// ============================================================
 // Axiom AI — Global Demo State (React Context)
-// Stores the complete demo evaluation result after "Run Demo".
+// Stores and auto-initializes the canonical evaluation data.
 // ============================================================
 
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { DemoResponse } from '../types/api';
+import { runDemoEvaluation } from '../services/api';
 
 interface DemoState {
   data: DemoResponse | null;
@@ -14,17 +15,36 @@ interface DemoState {
   setDemoData: (d: DemoResponse | null) => void;
   setLoading: (b: boolean) => void;
   setError: (e: string | null) => void;
+  refreshData: () => Promise<void>;
 }
 
 const DemoContext = createContext<DemoState | null>(null);
 
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [data, setDemoData] = useState<DemoResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchDemo = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await runDemoEvaluation();
+      setDemoData(res);
+    } catch (err: any) {
+      console.error('Failed to auto-load canonical demo data:', err);
+      setError(err?.message || 'Failed to connect to Axiom API.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDemo();
+  }, []);
+
   return (
-    <DemoContext.Provider value={{ data, loading, error, setDemoData, setLoading, setError }}>
+    <DemoContext.Provider value={{ data, loading, error, setDemoData, setLoading, setError, refreshData: fetchDemo }}>
       {children}
     </DemoContext.Provider>
   );

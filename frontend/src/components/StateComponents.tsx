@@ -1,4 +1,4 @@
-import { AlertCircle, Loader2 } from 'lucide-react';
+﻿import { AlertCircle, Loader2 } from 'lucide-react';
 
 export function LoadingState({ message = 'Loading evaluation data...' }: { message?: string }) {
   return (
@@ -39,3 +39,4 @@ export function EmptyState({ title = 'No data available', message = 'There is no
     </div>
   );
 }
+

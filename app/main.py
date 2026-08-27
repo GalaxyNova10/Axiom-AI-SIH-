@@ -474,3 +474,121 @@ def get_demo_summary() -> Dict[str, Any]:
         "scale_up": res.scale_up_evaluation,
         "authorization": res.human_authorization,
     }
+
+
+# ============================================================
+# FINTECH EVALUATION ENDPOINTS
+# ============================================================
+
+from ai.fintech_scenario import (
+    get_fintech_scenario_metadata,
+    run_fintech_demo,
+    CREDVEDA_PRESET,
+)
+
+# In-memory store for fintech evaluations
+_fintech_evaluations: Dict[str, Dict[str, Any]] = {}
+
+
+class FintechEvaluateRequest(BaseModel):
+    startup_name: str = Field(
+        default="CredVeda AI",
+        description="Name of the startup / AI vendor",
+    )
+    model_name: str = Field(
+        default="Vernacular MSME Underwriting & Credit Risk Engine",
+        description="Name of the AI model being evaluated",
+    )
+    department: str = Field(
+        default="Department of Financial Services",
+        description="Government department procuring the model",
+    )
+    district: str = Field(
+        default="DFS Digital Finance Pilot District (Tier-3/4 Districts)",
+        description="Target deployment district / region",
+    )
+    claimed_accuracy: float = Field(
+        default=94.5,
+        ge=0.0,
+        le=100.0,
+        description="Vendor-claimed model accuracy (%)",
+    )
+    seed: Optional[int] = Field(
+        default=42,
+        description="Deterministic evaluation seed",
+    )
+
+
+@app.get(
+    "/api/v1/fintech/scenario",
+    summary="Get fintech scenario metadata and test definitions",
+    tags=["Fintech"],
+)
+def get_fintech_scenario() -> Dict[str, Any]:
+    """Returns the canonical DFS fintech scenario metadata and the 15-test definitions."""
+    return safe_serialize(get_fintech_scenario_metadata())
+
+
+@app.get(
+    "/api/v1/fintech/preset",
+    summary="Get CredVeda AI benchmark preset",
+    tags=["Fintech"],
+)
+def get_fintech_preset() -> Dict[str, Any]:
+    """Returns the pre-loaded CredVeda AI startup benchmark parameters."""
+    return safe_serialize(CREDVEDA_PRESET)
+
+
+@app.post(
+    "/api/v1/fintech/evaluate",
+    summary="Run the 15-point fintech model stress evaluation",
+    description=(
+        "Executes all 15 government-grade stress tests against the submitted AI model. "
+        "Returns evidence-classified test results, confidence scoring, pilot twin data, "
+        "and the deterministic procurement gate verdict."
+    ),
+    tags=["Fintech"],
+)
+def run_fintech_evaluation_endpoint(request: FintechEvaluateRequest) -> Dict[str, Any]:
+    """Run the full 15-test fintech stress evaluation and store the result."""
+    seed_val = request.seed if request.seed is not None else 42
+    result = run_fintech_demo(
+        startup_name=request.startup_name,
+        model_name=request.model_name,
+        department=request.department,
+        district=request.district,
+        claimed_accuracy=request.claimed_accuracy,
+        seed=seed_val,
+    )
+    result["submitted_at"] = datetime.now(timezone.utc).isoformat()
+    _fintech_evaluations[result["evaluation_id"]] = result
+    return safe_serialize(result)
+
+
+@app.get(
+    "/api/v1/fintech/evaluations/{evaluation_id}",
+    summary="Retrieve a stored fintech evaluation result",
+    tags=["Fintech"],
+)
+def get_fintech_evaluation(evaluation_id: str) -> Dict[str, Any]:
+    if evaluation_id not in _fintech_evaluations:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "Fintech evaluation not found", "evaluation_id": evaluation_id},
+        )
+    return safe_serialize(_fintech_evaluations[evaluation_id])
+
+
+@app.get(
+    "/api/v1/fintech/latest",
+    summary="Get the most recent fintech evaluation result",
+    tags=["Fintech"],
+)
+def get_latest_fintech_evaluation() -> Dict[str, Any]:
+    if not _fintech_evaluations:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No fintech evaluations have been run yet.",
+        )
+    latest_key = list(_fintech_evaluations.keys())[-1]
+    return safe_serialize(_fintech_evaluations[latest_key])
