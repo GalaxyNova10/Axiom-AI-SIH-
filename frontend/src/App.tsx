@@ -18,10 +18,10 @@ import GovernancePage from './pages/GovernancePage';
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#0f172a' }}>
+    <div className="app-shell">
       <Sidebar />
       <main
-        style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}
+        className="app-main app-content"
         id="main-content"
         tabIndex={-1}
         aria-label="Main content"

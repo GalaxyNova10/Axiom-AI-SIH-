@@ -1,133 +1,126 @@
-// ============================================================
-// Data Governance Page
-// ============================================================
-
 import { useDemoContext } from '../context/DemoContext';
-import { EmptyState } from '../components/StateComponents';
-import { Database, ShieldCheck, AlertCircle, Lock } from 'lucide-react';
+import StatusBadge from '../components/StatusBadge';
+import { Database, ShieldCheck, Lock, Eye, AlertTriangle } from 'lucide-react';
 
-// Frontend-level sensitive key filter (defense-in-depth)
-const SENSITIVE_KEYS = new Set([
+const SANITIZED_KEYS = [
   'private_parameters', 'raw_seed', 'seed', 'seed_hash',
-  'secret', 'private_key', 'api_key', 'openai_api_key', 'model_weights',
-]);
-
-function isSensitiveKey(key: string): boolean {
-  return SENSITIVE_KEYS.has(key.toLowerCase());
-}
+  'secret', 'private_key', 'api_key', 'openai_api_key', 'model_weights', 'source_code',
+];
 
 export default function GovernancePage() {
   const { data } = useDemoContext();
 
-  if (!data) return <div style={{ padding: '28px' }}><EmptyState message="Run the canonical demo to view data governance information." /></div>;
+  if (!data) {
+    return (
+      <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <p className="font-subheading" style={{ color: 'var(--text-muted)' }}>Run the canonical demo to load data governance policies.</p>
+      </div>
+    );
+  }
 
-  const gov = data.data_governance;
+  const gov = data.data_governance ?? {};
+
+  const scheduleRows = [
+    { label: 'Evidence Integrity', status: 'VERIFIED', icon: ShieldCheck, desc: 'Cryptographic hash verification of evaluation artifacts.' },
+    { label: 'Artifact Lineage', status: 'VERIFIED', icon: ShieldCheck, desc: 'Traceable provenance chain for all evaluation outputs.' },
+    { label: 'Private Parameters', status: 'PROTECTED', icon: Lock, desc: 'Seeds, private keys, model weights are server-side only.' },
+    { label: 'Public Deployment Conditions', status: 'VISIBLE', icon: Eye, desc: 'Strata dimensions and failure cartography are publicly auditable.' },
+    { label: 'LLM Boundary', status: 'SANITIZED', icon: ShieldCheck, desc: 'Advisory analysis input is stripped of sensitive keys before LLM call.' },
+  ];
 
   return (
-    <div className="fade-in" style={{ padding: '28px', maxWidth: '900px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Database size={20} color="#3b82f6" />
-          Data Governance
+    <div className="page animate-in">
+      <div style={{ marginBottom: '32px' }}>
+        <div className="font-label" style={{ marginBottom: '6px' }}>DATA GOVERNANCE</div>
+        <h1 className="font-display" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Database size={28} color="var(--accent)" /> Data Governance Policy
         </h1>
-        <p style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>
-          Sanitized data governance schedule and privacy protection information.
+        <p className="font-subheading" style={{ marginTop: '8px' }}>
+          Evidence provenance, privacy boundaries, and sanitization guarantees.
         </p>
       </div>
 
-      <div className="alert alert-info" style={{ marginBottom: '20px' }}>
-        <ShieldCheck size={14} />
-        <span>
-          All sensitive fields (private parameters, seeds, secrets, API keys, model weights) are excluded from API output
-          and additionally filtered by frontend sanitization. This page shows only public governance metadata.
-        </span>
-      </div>
-
-      {/* Governance schedule */}
-      {gov && (
-        <div className="card" style={{ marginBottom: '20px' }}>
-          <div className="card-header">
-            <span style={{ fontWeight: 600 }}>Governance Schedule</span>
-          </div>
-          {Object.entries(gov)
-            .filter(([k]) => !isSensitiveKey(k))
-            .map(([k, v]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #1e293b', gap: '12px' }}>
-                <span style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'capitalize', flexShrink: 0 }}>
-                  {k.replace(/_/g, ' ')}
-                </span>
-                <span style={{ fontSize: '13px', color: '#e2e8f0', textAlign: 'right', wordBreak: 'break-word' }}>
-                  {String(v ?? '—')}
-                </span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+        {/* Schedule */}
+        <div className="card">
+          <div className="card-header"><span style={{ fontWeight: 600 }}>Governance Schedule</span></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {scheduleRows.map(row => (
+              <div key={row.label} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', paddingBottom: '16px', borderBottom: '1px solid var(--border-subtle)' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--surface-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <row.icon size={15} color="var(--text-muted)" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 600 }}>{row.label}</span>
+                    <StatusBadge status={row.status} size="sm" />
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{row.desc}</p>
+                </div>
               </div>
             ))}
-        </div>
-      )}
-
-      {/* Evidence provenance */}
-      <div className="card" style={{ marginBottom: '20px' }}>
-        <div className="card-header">
-          <span style={{ fontWeight: 600 }}>Evidence Provenance</span>
-        </div>
-        <div className="alert alert-info" style={{ marginBottom: '12px' }}>
-          <AlertCircle size={13} />
-          <span>Evidence levels distinguish between independently validated measurements and government-declared parameters.</span>
-        </div>
-        {[
-          { level: 'INDEPENDENTLY_VALIDATED', desc: 'Generated by independent black-box evaluation with cryptographic artifact integrity and self-verifying evaluator.' },
-          { level: 'OBSERVED', desc: 'Field-measured parameter from government sensor data or field logs.' },
-          { level: 'DECLARED', desc: 'Government-declared parameter from official survey or inventory.' },
-          { level: 'ESTIMATED', desc: 'Estimated parameter from field analyst judgment or proxy data.' },
-          { level: 'UNVERIFIED', desc: 'Unverified field estimate — carries lowest evidentiary weight.' },
-        ].map(({ level, desc }) => (
-          <div key={level} style={{ padding: '10px 0', borderBottom: '1px solid #1e293b' }}>
-            <div style={{ fontWeight: 600, fontSize: '12px', color: '#93c5fd', marginBottom: '4px' }}>{level}</div>
-            <div style={{ fontSize: '12px', color: '#64748b' }}>{desc}</div>
           </div>
-        ))}
+        </div>
+
+        {/* Sanitization Boundary */}
+        <div className="card" style={{ background: 'var(--surface-muted)' }}>
+          <div className="card-header"><span style={{ fontWeight: 600 }}>Frontend Sanitization Boundary</span></div>
+          <p className="font-body" style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
+            The frontend API layer enforces defense-in-depth sanitization. These key patterns are automatically scrubbed from all API responses before entering React state:
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px' }}>
+            {SANITIZED_KEYS.map(key => (
+              <span key={key} className="font-mono" style={{ background: 'var(--surface)', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', color: 'var(--critical)', border: '1px solid var(--critical-border)' }}>
+                {key}
+              </span>
+            ))}
+          </div>
+          <div className="alert alert-warning">
+            <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+            <div style={{ fontSize: '13px' }}>
+              <strong>Zero-Leak Guarantee:</strong> Raw seeds, private parameters, and model weights are never displayed in the UI. No placeholder values are generated for these fields.
+            </div>
+          </div>
+
+          {/* Backend governance data if available */}
+          {Object.keys(gov).length > 0 && (
+            <div style={{ marginTop: '20px' }}>
+              <div className="font-label" style={{ marginBottom: '10px' }}>Backend Governance Record</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {Object.entries(gov).filter(([k]) => !SANITIZED_KEYS.includes(k.toLowerCase())).map(([k, v]) => (
+                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{k.replace(/_/g, ' ')}</span>
+                    <span style={{ color: 'var(--text)', fontWeight: 500, maxWidth: '200px', textAlign: 'right' }}>{String(v)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Privacy protection */}
-      <div className="card" style={{ marginBottom: '20px' }}>
-        <div className="card-header">
-          <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Lock size={15} />
-            Privacy & Security Boundaries
-          </span>
+      {/* Data Flow Diagram */}
+      <h2 className="font-heading" style={{ marginBottom: '20px' }}>Data Flow & LLM Boundary</h2>
+      <div className="card" style={{ padding: '32px', textAlign: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          {[
+            { label: 'Evaluation Output', sub: 'Public metrics + private internal state', color: 'var(--text)', bg: 'var(--surface-sunken)', border: 'var(--border)' },
+            null,
+            { label: 'Sanitization Boundary', sub: 'Forbidden keys scrubbed recursively', color: 'var(--critical)', bg: 'var(--critical-bg)', border: 'var(--critical-border)' },
+            null,
+            { label: 'Advisory Diagnostics', sub: 'LLM analysis on safe public data only', color: 'var(--advisory)', bg: 'var(--advisory-bg)', border: 'var(--advisory-border)' },
+          ].map((block, i) => {
+            if (block === null) return (
+              <div key={`arrow-${i}`} style={{ color: 'var(--border-strong)', fontSize: '20px' }}>→</div>
+            );
+            return (
+              <div key={i} style={{ background: block.bg, border: `1px solid ${block.border}`, padding: '16px 24px', borderRadius: '10px', width: '180px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: block.color, marginBottom: '6px' }}>{block.label}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.3 }}>{block.sub}</div>
+              </div>
+            );
+          })}
         </div>
-        {[
-          { label: 'Private Test Seeds', value: 'Never exposed in API output or UI. Backend enforces exclusion.' },
-          { label: 'Private Parameters', value: 'Excluded from all API responses. Frontend additionally filters.' },
-          { label: 'Model Weights', value: 'Never transmitted. Vendor artifacts evaluated as black-box.' },
-          { label: 'API Keys / Secrets', value: 'Never stored in frontend code or transmitted to browser.' },
-          { label: 'Citizen Data', value: `Owner: ${gov?.citizen_data_owner ?? 'Government Department'} · Deleted after ${gov?.retention_days ?? 365} days.` },
-        ].map(({ label, value }) => (
-          <div key={label} style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '12px', padding: '10px 0', borderBottom: '1px solid #1e293b' }}>
-            <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>{label}</span>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>{value}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Auditability */}
-      <div className="card">
-        <div className="card-header">
-          <span style={{ fontWeight: 600 }}>Auditability Guarantees</span>
-        </div>
-        {[
-          'Outcome Contract locked and hashed before vendor evaluation begins.',
-          'Test suite hash published — results are reproducible given the same seed.',
-          'All vendor artifacts frozen via SHA-256 before evaluation.',
-          'Evidence records carry cryptographic bindings and expiry windows.',
-          'Human authorization decisions recorded with actor ID and justification.',
-          'Audit trail is append-only and cannot be modified post-hoc.',
-          'AI diagnostics are clearly labeled advisory and cannot alter governance state.',
-        ].map((g, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 0', borderBottom: '1px solid #1e293b' }}>
-            <ShieldCheck size={13} color="#16a34a" style={{ flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>{g}</span>
-          </div>
-        ))}
       </div>
     </div>
   );

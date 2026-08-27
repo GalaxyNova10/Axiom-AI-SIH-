@@ -1,128 +1,135 @@
-// ============================================================
-// Scale-Up Page
-// ============================================================
-
 import { useDemoContext } from '../context/DemoContext';
-import { EmptyState } from '../components/StateComponents';
 import StatusBadge from '../components/StatusBadge';
-import { TrendingUp, AlertCircle } from 'lucide-react';
+import { TrendingUp, MapPin, AlertOctagon, CheckCircle } from 'lucide-react';
 
 export default function ScaleUpPage() {
   const { data } = useDemoContext();
 
-  if (!data) return <div style={{ padding: '28px' }}><EmptyState message="Run the canonical demo to load scale-up evaluation." /></div>;
-
-  const su = data.scale_up;
-
-  if (!su) {
+  if (!data) {
     return (
-      <div style={{ padding: '28px' }}>
-        <EmptyState title="No scale-up data" message="Scale-up evaluation is not available for this result." />
+      <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <p className="font-subheading" style={{ color: 'var(--text-muted)' }}>Run the canonical demo to load scale-up evaluations.</p>
       </div>
     );
   }
 
+  const scaleUp = data.scale_up ?? {};
+  const entries = Object.entries(scaleUp);
+
   return (
-    <div className="fade-in" style={{ padding: '28px', maxWidth: '900px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <TrendingUp size={20} color="#3b82f6" />
-          Regional Scale-Up Evaluation
+    <div className="page animate-in">
+      <div style={{ marginBottom: '32px' }}>
+        <div className="font-label" style={{ marginBottom: '6px' }}>SCALE-UP POLICY</div>
+        <h1 className="font-display" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <TrendingUp size={28} color="var(--accent)" /> Evidence-Gated Scale-Up
         </h1>
-        <p style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>
-          Passing District A does not grant automatic scaling to District B. Each scale-up is independently re-evaluated.
+        <p className="font-subheading" style={{ marginTop: '8px' }}>
+          A successful pilot does not automatically authorize deployment into another district.
         </p>
       </div>
 
-      <div className="alert alert-warning" style={{ marginBottom: '20px' }}>
-        <AlertCircle size={14} />
-        <span>
-          The frontend never authorizes deployment. Scale-up decisions are made by the backend policy engine and presented here read-only.
-        </span>
-      </div>
-
-      <div className="card" style={{ marginBottom: '20px' }}>
-        <div className="card-header">
-          <span style={{ fontWeight: 600 }}>Scale-Up Decision</span>
-          <StatusBadge status={su.status} />
+      {entries.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
+          <TrendingUp size={32} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
+          <p className="font-subheading">No scale-up evaluation data returned by backend.</p>
         </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {entries.map(([key, evaluation]) => {
+            const ev = evaluation as Record<string, any>;
+            const decision = String(ev.decision ?? ev.scale_up_decision ?? ev.status ?? 'UNKNOWN');
+            return (
+              <div key={key} className="card animate-up">
+                <div className="card-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <MapPin size={16} color="var(--accent)" />
+                    <div>
+                      <h2 style={{ fontSize: '16px', fontWeight: 700 }}>{String(ev.vendor_id ?? key)}</h2>
+                      {ev.target_district && (
+                        <div className="font-caption" style={{ marginTop: '2px' }}>
+                          Target: <strong>{String(ev.target_district)}</strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <StatusBadge status={decision} />
+                </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
-          <MetricBox label="Request ID" value={su.request_id} mono />
-          <MetricBox label="Vendor" value={su.vendor_id} />
-          <MetricBox label="Target District" value={su.target_district} />
-          <MetricBox label="Policy Case" value={su.policy_case} />
-          <MetricBox label="Scale Eligible" value={su.scale_eligible ? 'YES' : 'NO'} />
-          <MetricBox label="Vendor Response Required" value={su.vendor_response_window_required ? 'YES' : 'NO'} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '16px' }}>
+                  {ev.policy_case && (
+                    <div className="metric">
+                      <span className="metric-label">Policy Case</span>
+                      <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)', marginTop: '4px' }}>{String(ev.policy_case)}</span>
+                    </div>
+                  )}
+                  {ev.scale_eligible != null && (
+                    <div className="metric">
+                      <span className="metric-label">Scale Eligible</span>
+                      <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {ev.scale_eligible
+                          ? <CheckCircle size={18} color="var(--eligible)" />
+                          : <AlertOctagon size={18} color="var(--critical)" />}
+                        <span style={{ fontWeight: 600, color: ev.scale_eligible ? 'var(--eligible)' : 'var(--critical)' }}>
+                          {ev.scale_eligible ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {ev.failure_map_status && (
+                    <div className="metric">
+                      <span className="metric-label">Failure Map Status</span>
+                      <div style={{ marginTop: '4px' }}><StatusBadge status={String(ev.failure_map_status)} /></div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Target Environment */}
+                {ev.target_environment && typeof ev.target_environment === 'object' && (
+                  <div style={{ background: 'var(--surface-muted)', padding: '14px', borderRadius: '8px', marginBottom: '16px' }}>
+                    <div className="font-label" style={{ marginBottom: '10px' }}>Target Environment Dimensions</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
+                      {Object.entries(ev.target_environment as Record<string, any>).map(([k, v]) => (
+                        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--surface)', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'capitalize', color: 'var(--text-secondary)' }}>{k}</span>
+                          <span className="font-mono" style={{ fontSize: '11px', color: 'var(--text)' }}>{String(v)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Historical matched strata */}
+                {ev.matched_failure_strata && Array.isArray(ev.matched_failure_strata) && ev.matched_failure_strata.length > 0 && (
+                  <div style={{ background: 'var(--critical-bg)', border: '1px solid var(--critical-border)', borderRadius: '8px', padding: '14px', marginBottom: '16px' }}>
+                    <div className="font-label" style={{ marginBottom: '8px', color: 'var(--critical)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <AlertOctagon size={14} /> Matching Historical Failure Strata
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {(ev.matched_failure_strata as string[]).map((s, i) => (
+                        <span key={i} className="font-mono" style={{ background: 'var(--surface)', border: '1px solid var(--critical-border)', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', color: 'var(--critical)' }}>
+                          {String(s).replace(/_/g, ' ')}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Reasons */}
+                {ev.reasons && Array.isArray(ev.reasons) && ev.reasons.length > 0 && (
+                  <div>
+                    <div className="font-label" style={{ marginBottom: '8px' }}>Decision Reasons</div>
+                    <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {(ev.reasons as any[]).map((r, i) => (
+                        <li key={i} className="font-body" style={{ color: 'var(--text-secondary)' }}>{String(r)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-
-        {su.failure_map_status && (
-          <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span className="section-title" style={{ margin: 0 }}>Failure Map Status:</span>
-            <StatusBadge status={su.failure_map_status} />
-          </div>
-        )}
-
-        {su.matched_failure_strata && su.matched_failure_strata.length > 0 && (
-          <div style={{ marginBottom: '14px' }}>
-            <div className="section-title">Matched Failure Strata (Risk Indicator)</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
-              {su.matched_failure_strata.map((s, i) => (
-                <span
-                  key={i}
-                  className="mono"
-                  style={{
-                    background: '#450a0a',
-                    border: '1px solid #7f1d1d',
-                    color: '#fca5a5',
-                    borderRadius: '4px',
-                    padding: '3px 8px',
-                    fontSize: '11px',
-                  }}
-                >
-                  {s}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {su.reasons?.length > 0 && (
-          <div>
-            <div className="section-title">Decision Reasons</div>
-            <ul style={{ listStyle: 'disc', paddingLeft: '20px', marginTop: '6px' }}>
-              {su.reasons.map((r, i) => (
-                <li key={i} style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '4px' }}>{r}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      {/* Status reference */}
-      <div className="card">
-        <div style={{ fontWeight: 600, marginBottom: '12px' }}>Scale-Up Decision States Reference</div>
-        {[
-          { status: 'SCALE_ELIGIBLE', desc: 'Vendor meets all requirements for regional scale-up.' },
-          { status: 'SCALE_REVIEW_REQUIRED', desc: 'Further review is required before scale-up can proceed.' },
-          { status: 'DO_NOT_SCALE_YET', desc: 'Scale-up is not permitted at this time due to unresolved failure strata.' },
-          { status: 'REVALIDATION_REQUIRED', desc: 'Evidence or artifacts must be re-validated before scale-up.' },
-        ].map(({ status, desc }) => (
-          <div key={status} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0', borderBottom: '1px solid #1e293b' }}>
-            <StatusBadge status={status} />
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>{desc}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function MetricBox({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="metric-box">
-      <div className="metric-label">{label}</div>
-      <div className={`metric-value ${mono ? 'mono' : ''}`} style={{ fontSize: '13px', fontWeight: 600, marginTop: '4px' }}>{value}</div>
+      )}
     </div>
   );
 }

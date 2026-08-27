@@ -11,7 +11,7 @@ interface DemoState {
   data: DemoResponse | null;
   loading: boolean;
   error: string | null;
-  setData: (d: DemoResponse | null) => void;
+  setDemoData: (d: DemoResponse | null) => void;
   setLoading: (b: boolean) => void;
   setError: (e: string | null) => void;
 }
@@ -19,12 +19,12 @@ interface DemoState {
 const DemoContext = createContext<DemoState | null>(null);
 
 export function DemoProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<DemoResponse | null>(null);
+  const [data, setDemoData] = useState<DemoResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <DemoContext.Provider value={{ data, loading, error, setData, setLoading, setError }}>
+    <DemoContext.Provider value={{ data, loading, error, setDemoData, setLoading, setError }}>
       {children}
     </DemoContext.Provider>
   );

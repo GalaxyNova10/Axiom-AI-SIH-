@@ -1,6 +1,6 @@
 // ============================================================
 // Axiom AI — TypeScript API Types
-// Strictly mirrors actual backend response shapes.
+// Strictly mirrors actual backend response shapes from demo_scenario.py
 // DO NOT add frontend-derived fields here.
 // ============================================================
 
@@ -9,11 +9,6 @@ export type AnalysisMode = 'LLM' | 'DETERMINISTIC_FALLBACK';
 export type Severity = 'CRITICAL' | 'DEGRADED' | 'WATCH' | 'NORMAL';
 export type ProcurementDecision = 'ELIGIBLE' | 'REJECTED' | 'PENDING';
 export type HumanAction = 'APPROVE' | 'REJECT' | 'OVERRIDE' | 'REQUEST_RETEST';
-export type ScaleStatus =
-  | 'SCALE_ELIGIBLE'
-  | 'SCALE_REVIEW_REQUIRED'
-  | 'DO_NOT_SCALE_YET'
-  | 'REVALIDATION_REQUIRED';
 
 // ---- Health ----
 export interface HealthResponse {
@@ -52,39 +47,26 @@ export interface KPI {
 
 export interface OutcomeContract {
   contract_id: string;
-  problem_statement: string;
-  version: string;
-  is_locked: boolean;
-  kpis: KPI[];
-  minimum_evidence_confidence: number;
-  evidence_validity_months: number;
-}
-
-// ---- Pilot Twin ----
-export interface PilotParameter {
-  name: string;
-  value: string;
-  evidence_level: EvidenceLevel;
-  source: string;
-}
-
-export interface PilotTwin {
-  twin_id: string;
-  district: string;
-  department: string;
-  is_locked: boolean;
-  parameters: PilotParameter[];
+  problem_statement?: string;
+  version?: string;
+  is_locked?: boolean;
+  kpis?: KPI[];
+  minimum_evidence_confidence?: number;
+  evidence_validity_months?: number;
+  [key: string]: unknown;
 }
 
 // ---- Failure Hotspot ----
 export interface FailureHotspot {
   stratum_id: string;
-  severity: Severity;
+  severity: string;
   accuracy: number;
-  reason: string;
+  reason?: string;
+  failure_rate?: number;
+  confidence?: number;
 }
 
-// ---- Vendor Scorecard (from /vendors endpoint) ----
+// ---- Vendor Scorecard (from vendors array in demo response) ----
 export interface VendorScorecard {
   vendor_id: string;
   display_name?: string;
@@ -93,136 +75,117 @@ export interface VendorScorecard {
   accuracy?: number;
   latency?: number;
   error_count?: number;
-  evidence_level?: EvidenceLevel;
+  evidence_level?: string;
   evidence_confidence?: number;
-  overall_status: string;
-  failure_hotspots: FailureHotspot[];
-  top_failure_hotspot?: FailureHotspot;
+  overall_status?: string;
+  failure_hotspots?: FailureHotspot[];
+  top_failure_hotspot?: FailureHotspot | null;
   diagnostic_summary?: string;
-  procurement_recommendation: ProcurementDecision;
+  procurement_recommendation: string;
 }
 
 // ---- Hotspot Diagnosis ----
 export interface HotspotDiagnosis {
   stratum_id: string;
-  observed_conditions: string[];
+  observed_conditions?: string[];
   interaction_diagnosis?: string;
   operational_impact?: string;
-  diagnostic_confidence?: string;
+  diagnostic_confidence?: number | string;
+  accuracy?: number;
+  failure_rate?: number;
 }
 
-// ---- Diagnostic Report ----
+// ---- Vendor Challenge ----
+export interface VendorChallenge {
+  challenge_id: string;
+  target_stratum_id: string;
+  question: string;
+  rationale: string;
+  requested_evidence: string[];
+  priority: string;
+}
+
+// ---- Retest Recommendation ----
+export interface RetestRecommendation {
+  recommendation_id: string;
+  target_stratum_id: string;
+  reason: string;
+}
+
+// ---- Diagnostic Report (from diagnostics array) ----
 export interface DiagnosticReport {
   vendor_id: string;
   display_name?: string;
-  analysis_mode: AnalysisMode;
+  analysis_mode: string;
   overall_verdict_explanation: string;
   operational_risk_summary?: string;
   compound_hotspot_diagnoses: HotspotDiagnosis[];
-  recommended_vendor_challenges: string[];
-  targeted_retest_recommendations: string[];
+  recommended_vendor_challenges: VendorChallenge[];
+  targeted_retest_recommendations: RetestRecommendation[];
 }
 
-// ---- Failure Map per vendor ----
+// ---- Failure Map per vendor (from failure_maps array) ----
 export interface VendorFailureMap {
   vendor_id: string;
   display_name?: string;
   overall_status: string;
   overall_accuracy?: number;
-  total_strata: number;
-  critical_hotspots_count: number;
-  degraded_hotspots_count: number;
-  watch_hotspots_count: number;
+  total_strata?: number;
+  critical_hotspots_count?: number;
+  degraded_hotspots_count?: number;
+  watch_hotspots_count?: number;
   hotspots: FailureHotspot[];
   explanation?: Record<string, string>;
 }
 
-// ---- Procurement Gate ----
-export interface ProcurementGate {
-  gate: string;
-  passed: boolean;
-  value?: number | string | boolean;
-  required?: number | string | boolean;
-}
-
+// ---- Procurement Decision (value in procurement dict keyed by vendor_id) ----
 export interface ProcurementDecisionDetail {
-  decision: ProcurementDecision;
-  reasons: string[];
-  gates: ProcurementGate[];
-}
-
-// ---- Scale Up ----
-export interface ScaleUpSummary {
-  request_id: string;
-  vendor_id: string;
-  target_district: string;
-  status: ScaleStatus;
-  policy_case: string;
-  scale_eligible: boolean;
-  failure_map_status?: string;
-  matched_failure_strata?: string[];
-  reasons: string[];
-  vendor_response_window_required: boolean;
+  decision: string;
+  reasons?: string[];
+  gates?: Array<{ gate: string; passed: boolean; value?: unknown; required?: unknown }>;
+  is_eligible?: boolean;
+  [key: string]: unknown;
 }
 
 // ---- Human Authorization ----
 export interface HumanAuthorizationSummary {
-  authorization_id: string;
-  vendor_id: string;
-  requested_action: string;
-  ai_recommendation: string;
+  authorization_id?: string;
+  vendor_id?: string;
+  requested_action?: string;
+  ai_recommendation?: string;
   human_decision?: string;
-  status: string;
+  status?: string;
   authorizing_officer_id?: string;
   justification?: string;
   escalation_required?: boolean;
   escalation_destination?: string;
   audit_event_count?: number;
+  [key: string]: unknown;
 }
 
-// ---- Data Governance ----
-export interface DataGovernanceSummary {
-  schedule_id: string;
-  startup_ip_owner: string;
-  government_evidence_owner: string;
-  citizen_data_owner: string;
-  model_access_mode: string;
-  retention_days: number;
-  disclaimer: string;
-}
-
-// ---- Audit Summary ----
-export interface AuditSummary {
-  contract_locked: boolean;
-  twin_locked: boolean;
-  evaluator_authorized: boolean;
-  human_authorization_status: string;
-  scale_up_policy_case: string;
-}
-
-// ---- Complete Demo Response ----
+// ---- Complete Demo Response (from /api/v1/demo/evaluate) ----
 export interface DemoResponse {
   scenario: ScenarioMetadata;
   outcome_contract: OutcomeContract;
-  pilot_twin: PilotTwin;
+  pilot_twin: Record<string, unknown>;
   evaluation: {
     test_suite_summary: Record<string, unknown>;
     evaluator_status: Record<string, unknown>;
   };
   vendors: VendorScorecard[];
-  failure_maps: VendorFailureMap[];
-  diagnostics: DiagnosticReport[];
-  procurement: Record<string, ProcurementDecisionDetail>;
-  scale_up: ScaleUpSummary;
+  failure_maps: VendorFailureMap[];        // array, indexed by position (matches vendors order)
+  diagnostics: DiagnosticReport[];         // array, indexed by position
+  procurement: Record<string, ProcurementDecisionDetail>;  // keyed by vendor_id
+  scale_up: Record<string, unknown>;
   human_authorization: HumanAuthorizationSummary;
-  data_governance: DataGovernanceSummary;
-  audit_summary: AuditSummary;
+  data_governance: Record<string, unknown>;
+  audit_summary: Record<string, unknown>;
 }
 
-// ---- Authorization Request ----
+// ---- Authorization Request (matches backend AuthorizationActionRequest) ----
 export interface AuthorizationActionRequest {
   vendor_id: string;
-  action: HumanAction;
+  action: string;
   officer_id: string;
   justification: string;
   requested_action?: string;

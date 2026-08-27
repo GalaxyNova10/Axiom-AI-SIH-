@@ -1,81 +1,41 @@
-// ============================================================
-// Loading / Error / Empty state components
-// ============================================================
+import { AlertCircle, Loader2 } from 'lucide-react';
 
-import { AlertCircle, RefreshCw, Inbox } from 'lucide-react';
-
-interface LoadingStateProps {
-  message?: string;
-}
-
-export function LoadingState({ message = 'Loading…' }: LoadingStateProps) {
+export function LoadingState({ message = 'Loading evaluation data...' }: { message?: string }) {
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '60px 20px', gap: '16px',
-      }}
-    >
-      <div className="spinner" style={{ width: '36px', height: '36px' }} aria-hidden="true" />
-      <p style={{ color: '#94a3b8', fontSize: '14px' }}>{message}</p>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '16px' }}>
+      <Loader2 size={32} className="spinner" style={{ color: 'var(--accent)', animation: 'spin 1s linear infinite' }} />
+      <div style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: 500 }}>{message}</div>
     </div>
   );
 }
 
-interface ErrorStateProps {
-  message: string;
-  onRetry?: () => void;
-}
-
-export function ErrorState({ message, onRetry }: ErrorStateProps) {
+export function ErrorState({ title = 'Error', message, onRetry }: { title?: string; message: string; onRetry?: () => void }) {
   return (
-    <div
-      role="alert"
-      style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '60px 20px', gap: '16px',
-      }}
-    >
-      <AlertCircle size={40} color="#dc2626" aria-hidden="true" />
-      <p style={{ color: '#f87171', fontSize: '14px', maxWidth: '500px', textAlign: 'center' }}>
-        {message}
-      </p>
-      {onRetry && (
-        <button className="btn btn-secondary" onClick={onRetry} aria-label="Retry loading">
-          <RefreshCw size={14} aria-hidden="true" />
-          Retry
-        </button>
-      )}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px' }}>
+      <div className="card" style={{ maxWidth: '400px', width: '100%', borderColor: 'var(--critical-border)', textAlign: 'center', padding: 'var(--s8)' }}>
+        <AlertCircle size={32} color="var(--critical)" style={{ margin: '0 auto var(--s4)' }} />
+        <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)', marginBottom: '8px' }}>{title}</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.5, marginBottom: onRetry ? 'var(--s5)' : 0 }}>{message}</p>
+        {onRetry && (
+          <button className="btn btn-secondary" onClick={onRetry}>
+            Try Again
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
-interface EmptyStateProps {
-  title?: string;
-  message?: string;
-  action?: React.ReactNode;
-}
-
-export function EmptyState({
-  title = 'No data yet',
-  message = 'Run the canonical demo to populate this view.',
-  action,
-}: EmptyStateProps) {
+export function EmptyState({ title = 'No data available', message = 'There is no evaluation data to display.' }: { title?: string; message?: string }) {
   return (
-    <div
-      style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '60px 20px', gap: '12px',
-      }}
-    >
-      <Inbox size={40} color="#334155" aria-hidden="true" />
-      <p style={{ color: '#e2e8f0', fontWeight: 600 }}>{title}</p>
-      <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', maxWidth: '400px' }}>
-        {message}
-      </p>
-      {action}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', border: '1px dashed var(--border-strong)', borderRadius: 'var(--r-lg)', background: 'var(--surface-muted)' }}>
+      <div style={{ textAlign: 'center', maxWidth: '300px' }}>
+        <div style={{ color: 'var(--text-faint)', marginBottom: '12px' }}>
+          <AlertCircle size={32} style={{ margin: '0 auto' }} />
+        </div>
+        <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>{title}</h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.5 }}>{message}</p>
+      </div>
     </div>
   );
 }

@@ -1,147 +1,112 @@
-// ============================================================
-// Sidebar Navigation
-// ============================================================
-
-import { NavLink, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard, Users, Map, Brain, ShieldCheck,
-  TrendingUp, UserCheck, ClipboardList, Database, Activity,
-} from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { useDemoContext } from '../context/DemoContext';
-
-const BASE_NAV = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-];
-
-const EVAL_NAV = [
-  { icon: Users, label: 'Vendors', segment: 'vendors' },
-  { icon: Map, label: 'Failure Cartography', segment: 'failure-map' },
-  { icon: Brain, label: 'Diagnostics', segment: 'diagnostics' },
-  { icon: ShieldCheck, label: 'Procurement Decision', segment: 'decision' },
-  { icon: TrendingUp, label: 'Scale-Up', segment: 'scale-up' },
-  { icon: UserCheck, label: 'Human Authorization', segment: 'authorization' },
-  { icon: ClipboardList, label: 'Audit', segment: 'audit' },
-  { icon: Database, label: 'Data Governance', segment: 'governance' },
-];
+import {
+  LayoutDashboard, Users, Map, Brain,
+  ShieldCheck, TrendingUp, UserCheck, ClipboardList, Database
+} from 'lucide-react';
+import StatusBadge from './StatusBadge';
 
 export default function Sidebar() {
+  const { pathname } = useLocation();
   const { data } = useDemoContext();
-  const evalId = data?.vendors?.[0]?.evaluation_id;
+  const evalId = data?.vendors?.[0]?.evaluation_id ?? 'demo';
+
+  const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
+
+  const navItems = [
+    { name: 'Overview', path: '/', icon: LayoutDashboard },
+    { name: 'Vendors', path: `/evaluation/${evalId}/vendors`, icon: Users },
+    { name: 'Failure Cartography', path: `/evaluation/${evalId}/failure-map`, icon: Map },
+    { name: 'Diagnostics', path: `/evaluation/${evalId}/diagnostics`, icon: Brain },
+    { name: 'Procurement', path: `/evaluation/${evalId}/decision`, icon: ShieldCheck },
+    { name: 'Scale-Up', path: `/evaluation/${evalId}/scale-up`, icon: TrendingUp },
+    { name: 'Authorization', path: `/evaluation/${evalId}/authorization`, icon: UserCheck },
+    { name: 'Audit Trail', path: `/evaluation/${evalId}/audit`, icon: ClipboardList },
+    { name: 'Data Governance', path: `/evaluation/${evalId}/governance`, icon: Database },
+  ];
 
   return (
-    <aside
-      className="flex flex-col"
-      style={{
-        width: '220px',
-        minHeight: '100vh',
-        background: '#0f172a',
-        borderRight: '1px solid #1e293b',
-        padding: '0',
-        flexShrink: 0,
-      }}
-      aria-label="Main navigation"
-    >
-      {/* Logo */}
-      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid #1e293b' }}>
+    <aside style={{
+      width: '260px',
+      background: 'var(--surface-muted)',
+      borderRight: '1px solid var(--border)',
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      flexShrink: 0
+    }}>
+      {/* Brand Header */}
+      <div style={{ padding: '24px 20px', borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div
-            style={{
-              width: '32px', height: '32px',
-              background: 'linear-gradient(135deg, #1d4ed8, #7c3aed)',
-              borderRadius: '8px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-            aria-hidden="true"
-          >
-            <Activity size={16} color="white" />
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ color: 'white', fontWeight: 800, fontSize: '18px', letterSpacing: '-0.05em' }}>A</span>
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '14px', color: '#f1f5f9' }}>Axiom AI</div>
-            <div style={{ fontSize: '10px', color: '#64748b', letterSpacing: '0.05em' }}>GOVERNANCE PLATFORM</div>
+            <div style={{ fontWeight: 700, fontSize: '15px', letterSpacing: '-0.01em', color: 'var(--text)' }}>AXIOM AI</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500 }}>Evidence-Gated Procurement</div>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
-        {BASE_NAV.map(({ to, icon: Icon, label }) => (
-          <NavItem key={to} to={to} icon={<Icon size={16} />} label={label} exact />
-        ))}
-
-        {evalId && (
-          <>
-            <div className="section-title" style={{ padding: '16px 8px 4px' }}>
-              Evaluation
-            </div>
-            {EVAL_NAV.map(({ icon: Icon, label, segment }) => (
-              <NavItem
-                key={segment}
-                to={`/evaluation/${evalId}/${segment}`}
-                icon={<Icon size={16} />}
-                label={label}
-              />
-            ))}
-          </>
-        )}
+      <nav style={{ flex: 1, padding: '20px 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 650, letterSpacing: '0.05em', color: 'var(--text-faint)', textTransform: 'uppercase', padding: '0 8px', marginBottom: '8px' }}>
+          Evaluations
+        </div>
+        {navItems.map((item) => {
+          const active = isActive(item.path);
+          return (
+            <Link
+              key={item.name}
+              to={item.path}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '10px 12px',
+                borderRadius: 'var(--r-md)',
+                color: active ? 'var(--accent-hover)' : 'var(--text-secondary)',
+                background: active ? 'var(--surface)' : 'transparent',
+                fontWeight: active ? 600 : 500,
+                fontSize: '13.5px',
+                textDecoration: 'none',
+                border: active ? '1px solid var(--border)' : '1px solid transparent',
+                boxShadow: active ? 'var(--shadow-xs)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                if (!active) e.currentTarget.style.background = 'var(--surface)';
+              }}
+              onMouseLeave={(e) => {
+                if (!active) e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              <item.icon size={16} strokeWidth={active ? 2.5 : 2} style={{ opacity: active ? 1 : 0.7 }} />
+              {item.name}
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* Principle */}
-      <div style={{ padding: '12px', borderTop: '1px solid #1e293b' }}>
-        <div className="principle-banner" style={{ fontSize: '10px', padding: '8px 10px' }}>
-          "AI assists. Evidence proves.<br />Rules gate. Humans authorize."
+      {/* System Status Footer */}
+      <div style={{ padding: '20px', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 500 }}>Environment</span>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text)', background: 'var(--surface-sunken)', padding: '2px 6px', borderRadius: '4px' }}>DEMO</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 500 }}>API</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: 'var(--eligible)' }}>
+              <span className="dot dot-eligible" /> Connected
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 500 }}>Evidence</span>
+            <StatusBadge status="VERIFIED" size="sm" />
+          </div>
         </div>
       </div>
     </aside>
-  );
-}
-
-function NavItem({
-  to,
-  icon,
-  label,
-  exact,
-}: {
-  to: string;
-  icon: React.ReactNode;
-  label: string;
-  exact?: boolean;
-}) {
-  const location = useLocation();
-  const isActive = exact ? location.pathname === to : location.pathname.startsWith(to);
-
-  return (
-    <NavLink
-      to={to}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        padding: '8px 10px',
-        borderRadius: '6px',
-        marginBottom: '2px',
-        color: isActive ? '#93c5fd' : '#94a3b8',
-        background: isActive ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
-        fontSize: '13px',
-        fontWeight: isActive ? 600 : 400,
-        transition: 'all 0.15s ease',
-        textDecoration: 'none',
-      }}
-      onMouseEnter={(e) => {
-        if (!isActive) {
-          (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
-          (e.currentTarget as HTMLElement).style.color = '#e2e8f0';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!isActive) {
-          (e.currentTarget as HTMLElement).style.background = 'transparent';
-          (e.currentTarget as HTMLElement).style.color = '#94a3b8';
-        }
-      }}
-      aria-current={isActive ? 'page' : undefined}
-    >
-      {icon}
-      <span>{label}</span>
-    </NavLink>
   );
 }

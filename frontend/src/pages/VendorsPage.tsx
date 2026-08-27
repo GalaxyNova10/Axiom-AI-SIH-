@@ -1,166 +1,135 @@
-// ============================================================
-// Vendors Page — all scorecards
-// ============================================================
-
 import { useNavigate } from 'react-router-dom';
-import { Users, ChevronRight, TrendingDown } from 'lucide-react';
 import { useDemoContext } from '../context/DemoContext';
-import { EmptyState } from '../components/StateComponents';
 import StatusBadge from '../components/StatusBadge';
-import type { VendorScorecard, FailureHotspot } from '../types/api';
+import { ChevronRight, BarChart2, AlertTriangle } from 'lucide-react';
 
 export default function VendorsPage() {
   const { data } = useDemoContext();
   const navigate = useNavigate();
-  const evalId = data?.vendors?.[0]?.evaluation_id;
+  const evalId = data?.vendors?.[0]?.evaluation_id ?? 'demo';
 
   if (!data) {
     return (
-      <div style={{ padding: '28px' }}>
-        <EmptyState message="Run the canonical demo from the Dashboard to load vendor scorecards." />
+      <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+          <BarChart2 size={32} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
+          <p className="font-subheading">Run the canonical demo from Overview to load vendor scorecards.</p>
+        </div>
       </div>
     );
   }
 
+  const vendors = data.vendors ?? [];
+  const procurement = data.procurement ?? {};
+  const failureMaps = data.failure_maps ?? [];
+
   return (
-    <div className="fade-in" style={{ padding: '28px', maxWidth: '1200px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>Vendor Scorecards</h1>
-        <p style={{ color: '#94a3b8', fontSize: '13px' }}>
-          Evidence-validated performance metrics from independent evaluation. Backend is the source of truth.
+    <div className="page animate-in">
+      <div style={{ marginBottom: '32px' }}>
+        <div className="font-label" style={{ marginBottom: '6px' }}>COMPARISON VIEW</div>
+        <h1 className="font-display">Vendor Scorecards</h1>
+        <p className="font-subheading" style={{ marginTop: '8px' }}>
+          Evidence-validated performance across all 24 deployment strata. Backend is source of truth.
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
-        {data.vendors.map((v) => (
-          <VendorCard
-            key={v.vendor_id}
-            vendor={v}
-            onInspect={() => evalId && navigate(`/evaluation/${evalId}/vendors/${v.vendor_id}`)}
-          />
-        ))}
+      {/* Comparison Table */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '32px' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="ax-table">
+            <thead>
+              <tr>
+                <th>Vendor</th>
+                <th>Accuracy</th>
+                <th>Latency (ms)</th>
+                <th>Evidence Level</th>
+                <th>Confidence</th>
+                <th>Failure Status</th>
+                <th>Critical Hotspots</th>
+                <th>Decision</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {vendors.map(v => {
+                const procDecision = procurement[v.vendor_id]?.decision ?? v.procurement_recommendation ?? 'PENDING';
+                const fm = failureMaps.find(f => f.vendor_id === v.vendor_id);
+                return (
+                  <tr
+                    key={v.vendor_id}
+                    onClick={() => navigate(`/evaluation/${evalId}/vendors/${v.vendor_id}`)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td>
+                      <div style={{ fontWeight: 600, fontSize: '14px' }}>{v.display_name ?? v.vendor_id}</div>
+                      <div className="font-caption" style={{ marginTop: '2px' }}>{v.vendor_id}</div>
+                    </td>
+                    <td>
+                      <span className="font-number" style={{ fontWeight: 700, color: (v.accuracy ?? 0) < 80 ? 'var(--critical)' : 'var(--text)' }}>
+                        {v.accuracy != null ? `${v.accuracy.toFixed(2)}%` : '—'}
+                      </span>
+                    </td>
+                    <td className="font-number">{v.latency != null ? v.latency.toFixed(1) : '—'}</td>
+                    <td>
+                      <span className="font-caption" style={{ fontWeight: 500 }}>{v.evidence_level ?? '—'}</span>
+                    </td>
+                    <td className="font-number">{v.evidence_confidence != null ? `${v.evidence_confidence.toFixed(1)}%` : '—'}</td>
+                    <td><StatusBadge status={fm?.overall_status ?? v.overall_status ?? 'NORMAL'} dot /></td>
+                    <td>
+                      <span style={{ fontWeight: 700, color: (fm?.critical_hotspots_count ?? 0) > 0 ? 'var(--critical)' : 'var(--text)' }} className="font-number">
+                        {fm?.critical_hotspots_count ?? 0}
+                      </span>
+                    </td>
+                    <td><StatusBadge status={procDecision} /></td>
+                    <td style={{ color: 'var(--text-faint)' }}><ChevronRight size={16} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Advisory disclaimer */}
-      <div className="alert alert-info" style={{ marginTop: '24px' }}>
-        <Users size={14} />
-        <span>
-          Vendor scorecards reflect independently validated evidence. Diagnostic summaries are advisory intelligence only — they do not alter procurement decisions.
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function VendorCard({ vendor, onInspect }: { vendor: VendorScorecard; onInspect: () => void }) {
-  const isEligible = vendor.procurement_recommendation === 'ELIGIBLE';
-  const borderColor = isEligible ? '#16a34a' : '#dc2626';
-
-  return (
-    <article
-      className="card"
-      style={{ borderColor, cursor: 'pointer', transition: 'all 0.2s ease' }}
-      onClick={onInspect}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onInspect()}
-      aria-label={`Inspect ${vendor.display_name ?? vendor.vendor_id} scorecard`}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; }}
-    >
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: '16px', color: '#f1f5f9' }}>
-            {vendor.display_name ?? vendor.vendor_id}
+      {/* Visual interpretation */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div className="card">
+          <div className="card-header">
+            <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BarChart2 size={16} /> Accuracy vs. Deployment Risk
+            </span>
           </div>
-          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-            {vendor.vendor_id}
-            {vendor.description && ` · ${vendor.description}`}
+          {/* Conceptual scatter chart */}
+          <div style={{ position: 'relative', height: '200px', borderLeft: '2px solid var(--border)', borderBottom: '2px solid var(--border)', margin: '16px 40px 32px 16px' }}>
+            <div style={{ position: 'absolute', bottom: '-24px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>OVERALL ACCURACY →</div>
+            <div style={{ position: 'absolute', left: '-40px', top: '50%', transform: 'translateY(-50%) rotate(-90deg)', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>DEPLOYMENT RISK ↑</div>
+            {[
+              { label: 'KrishiLink', x: 85, y: 20, color: 'var(--critical)' },
+              { label: 'RuralFlow', x: 60, y: 75, color: 'var(--eligible)' },
+              { label: 'AgriRoute', x: 20, y: 30, color: 'var(--critical)' },
+            ].map(p => (
+              <div key={p.label} style={{ position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, transform: 'translate(-50%, -50%)' }}>
+                <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: p.color, border: '2px solid white', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }} />
+                <div style={{ position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)', fontSize: '10px', fontWeight: 600, whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{p.label}</div>
+              </div>
+            ))}
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-          <StatusBadge status={vendor.procurement_recommendation} />
-          <StatusBadge status={vendor.overall_status ?? 'NORMAL'} dot />
-        </div>
-      </div>
 
-      {/* Metrics grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
-        <Metric label="Accuracy" value={vendor.accuracy != null ? `${vendor.accuracy.toFixed(2)}%` : '—'} highlight={vendor.accuracy != null && vendor.accuracy >= 80} />
-        <Metric label="Latency (ms)" value={vendor.latency != null ? vendor.latency.toFixed(1) : '—'} />
-        <Metric label="Error Count" value={vendor.error_count?.toString() ?? '—'} />
-        <Metric label="Evidence Confidence" value={vendor.evidence_confidence != null ? `${vendor.evidence_confidence.toFixed(1)}%` : '—'} highlight={vendor.evidence_confidence != null && vendor.evidence_confidence >= 70} />
-      </div>
-
-      {/* Evidence level */}
-      {vendor.evidence_level && (
-        <div style={{ marginBottom: '12px', fontSize: '12px', color: '#94a3b8' }}>
-          <span style={{ color: '#64748b' }}>Evidence Level: </span>
-          <strong style={{ color: '#93c5fd' }}>{vendor.evidence_level}</strong>
-        </div>
-      )}
-
-      {/* Top hotspot */}
-      {(vendor.top_failure_hotspot ?? vendor.failure_hotspots?.[0]) && (
-        <TopHotspot hotspot={vendor.top_failure_hotspot ?? vendor.failure_hotspots[0]} />
-      )}
-
-      {/* Diagnostic summary */}
-      {vendor.diagnostic_summary && (
-        <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '10px', marginTop: '10px' }}>
-          <div style={{ fontSize: '10px', color: '#7c3aed', fontWeight: 600, letterSpacing: '0.05em', marginBottom: '4px' }}>
-            ADVISORY DIAGNOSTIC — does not authorize procurement
+        <div className="card" style={{ background: 'var(--surface-muted)' }}>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <AlertTriangle size={20} color="var(--watch)" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Why accuracy alone is insufficient</h3>
+              <p className="font-body" style={{ color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                KrishiLink Technologies achieves the highest aggregate score but is <strong>REJECTED</strong> by the deterministic procurement engine.
+              </p>
+              <p className="font-body" style={{ color: 'var(--text-secondary)' }}>
+                The failure cartography reveals catastrophic localized breakdown under compound rural conditions — a risk that aggregate benchmarks completely conceal.
+              </p>
+            </div>
           </div>
-          <p style={{ fontSize: '12px', color: '#94a3b8', lineHeight: 1.5 }}>
-            {vendor.diagnostic_summary.slice(0, 200)}{vendor.diagnostic_summary.length > 200 ? '…' : ''}
-          </p>
         </div>
-      )}
-
-      {/* Inspect button */}
-      <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'flex-end' }}>
-        <button className="btn btn-ghost btn-sm" tabIndex={-1} aria-hidden="true">
-          Inspect Detail <ChevronRight size={13} />
-        </button>
       </div>
-    </article>
-  );
-}
-
-function Metric({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className="metric-box">
-      <div className="metric-label">{label}</div>
-      <div style={{ fontWeight: 600, color: highlight ? '#4ade80' : '#e2e8f0', fontSize: '15px', marginTop: '2px' }}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function TopHotspot({ hotspot }: { hotspot: FailureHotspot }) {
-  return (
-    <div
-      style={{
-        background: '#450a0a22',
-        border: '1px solid #7f1d1d',
-        borderRadius: '6px',
-        padding: '8px 10px',
-        marginTop: '8px',
-      }}
-    >
-      <div style={{ fontSize: '10px', color: '#f87171', fontWeight: 600, letterSpacing: '0.05em', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <TrendingDown size={10} />
-        TOP FAILURE HOTSPOT
-      </div>
-      <div style={{ fontSize: '11px', color: '#fca5a5', fontFamily: 'monospace' }}>{hotspot.stratum_id}</div>
-      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
-        Accuracy: {hotspot.accuracy?.toFixed(1)}% · <StatusBadge status={hotspot.severity} />
-      </div>
-      {hotspot.reason && (
-        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{hotspot.reason}</div>
-      )}
     </div>
   );
 }

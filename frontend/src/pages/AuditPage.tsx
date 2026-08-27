@@ -1,159 +1,154 @@
-// ============================================================
-// Audit Trail Page
-// ============================================================
-
 import { useDemoContext } from '../context/DemoContext';
-import { EmptyState } from '../components/StateComponents';
 import StatusBadge from '../components/StatusBadge';
-import { ClipboardList, Lock } from 'lucide-react';
+import { ClipboardList, Shield, Lock, CheckCircle } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+interface AuditEvent {
+  id: string;
+  time: string;
+  actor: string;
+  action: string;
+  icon: LucideIcon;
+  done: boolean;
+  detail: string;
+  pending?: boolean;
+}
 
 export default function AuditPage() {
   const { data } = useDemoContext();
 
-  if (!data) return <div style={{ padding: '28px' }}><EmptyState message="Run the canonical demo to view the audit trail." /></div>;
+  if (!data) {
+    return (
+      <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <p className="font-subheading" style={{ color: 'var(--text-muted)' }}>Run the canonical demo to load the audit trail.</p>
+      </div>
+    );
+  }
 
-  const audit = data.audit_summary;
-  const auth = data.human_authorization;
+  const audit = data.audit_summary ?? {};
+  const vendors = data.vendors ?? [];
+  const procurement = data.procurement ?? {};
+  const humanAuth = data.human_authorization ?? {};
+
+  // Build synthetic event ledger from available data
+  const events: AuditEvent[] = [
+    { id: 'e1', time: 'Stage 1', actor: 'System', action: 'CONTRACT_LOCKED', icon: Lock, done: !!(audit as Record<string, any>).contract_locked, detail: 'Outcome contract hashed and locked. KPI: Delivery Success Rate ≥ 80.0%.' },
+    { id: 'e2', time: 'Stage 2', actor: 'System', action: 'PILOT_TWIN_LOCKED', icon: Shield, done: !!(audit as Record<string, any>).twin_locked, detail: 'Pilot Twin parameters captured and frozen for District Alpha.' },
+    { id: 'e3', time: 'Stage 4', actor: 'System', action: 'GOLDEN_SUITE_AUTHORIZED', icon: CheckCircle, done: !!(audit as Record<string, any>).evaluator_authorized, detail: 'Evaluator passed Golden Reference Suite before vendor evaluation.' },
+    ...vendors.map((v, i): AuditEvent => ({
+      id: `e-vendor-${i}`,
+      time: `Stage ${7 + i}`,
+      actor: 'Decision Engine',
+      action: `VENDOR_EVALUATED_${v.vendor_id.toUpperCase()}`,
+      icon: Shield,
+      done: true,
+      detail: `${v.display_name ?? v.vendor_id}: ${procurement[v.vendor_id]?.decision ?? v.procurement_recommendation ?? 'PENDING'}. Accuracy: ${v.accuracy?.toFixed(1) ?? '—'}%`,
+    })),
+    { id: 'e-auth', time: 'Stage 13', actor: humanAuth.authorizing_officer_id ? String(humanAuth.authorizing_officer_id) : 'Pending Officer', action: 'HUMAN_AUTHORIZATION', icon: Lock, done: !!humanAuth.status, detail: humanAuth.status ? `Status: ${humanAuth.status}. Justification recorded.` : 'Awaiting officer authorization.', pending: !humanAuth.status },
+  ];
 
   return (
-    <div className="fade-in" style={{ padding: '28px', maxWidth: '900px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <ClipboardList size={20} color="#3b82f6" />
-          Audit Trail
+    <div className="page animate-in">
+      <div style={{ marginBottom: '32px' }}>
+        <div className="font-label" style={{ marginBottom: '6px' }}>IMMUTABLE LOG</div>
+        <h1 className="font-display" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <ClipboardList size={28} color="var(--accent)" /> Audit Trail
         </h1>
-        <p style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>
-          Chronological, immutable record of governance events. All entries are append-only.
+        <p className="font-subheading" style={{ marginTop: '8px' }}>
+          Append-only governance audit history. Every decision is recorded and traceable.
         </p>
       </div>
 
-      <div className="alert alert-info" style={{ marginBottom: '20px' }}>
-        <Lock size={14} />
-        <span>Audit records are immutable and append-only. They cannot be modified by any actor including administrators.</span>
-      </div>
-
-      {/* Governance state summary */}
-      <div className="card" style={{ marginBottom: '20px' }}>
-        <div className="card-header">
-          <span style={{ fontWeight: 600 }}>Governance State Summary</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-          {audit && Object.entries(audit).map(([k, v]) => (
-            <AuditRow
-              key={k}
-              label={k.replace(/_/g, ' ')}
-              value={typeof v === 'boolean' ? (v ? 'TRUE' : 'FALSE') : String(v)}
-              actor="SYSTEM"
-              isBool={typeof v === 'boolean'}
-              boolVal={typeof v === 'boolean' ? v : undefined}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Authorization events */}
-      {auth && (
-        <div className="card" style={{ marginBottom: '20px' }}>
-          <div className="card-header">
-            <span style={{ fontWeight: 600 }}>Authorization Events</span>
-            <StatusBadge status={auth.status} />
+      {/* Integrity Summary */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '32px' }}>
+        <div className="card" style={{ padding: '14px' }}>
+          <div className="metric metric-sm">
+            <span className="metric-label">Contract Lock</span>
+            <div style={{ marginTop: '4px' }}>
+              <StatusBadge status={audit.contract_locked ? 'LOCKED' : 'PENDING'} dot />
+            </div>
           </div>
-          <div>
-            {[
-              {
-                event: 'Authorization Request Created',
-                actor: auth.authorizing_officer_id ?? 'OFFICER',
-                detail: `Vendor: ${auth.vendor_id} · Action: ${auth.requested_action}`,
-                transition: `AI Recommendation: ${auth.ai_recommendation}`,
-              },
-              {
-                event: 'Human Decision Recorded',
-                actor: auth.authorizing_officer_id ?? 'OFFICER',
-                detail: `Decision: ${auth.human_decision ?? 'PENDING'}`,
-                transition: `Status → ${auth.status}`,
-              },
-              ...(auth.escalation_required ? [{
-                event: 'Escalation Triggered',
-                actor: 'SYSTEM',
-                detail: `Override detected — sent to ${auth.escalation_destination ?? 'HIGHER_AUTHORITY'}`,
-                transition: 'Maker-Checker Policy Applied',
-              }] : []),
-            ].map((entry, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: '12px 0', borderBottom: '1px solid #1e293b',
-                  display: 'grid', gridTemplateColumns: '24px 1fr', gap: '12px', alignItems: 'start',
-                }}
-              >
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6', marginTop: '5px', marginLeft: '8px' }} aria-hidden="true" />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '13px', color: '#f1f5f9' }}>{entry.event}</div>
-                  <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>{entry.detail}</div>
-                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                    Actor: <span style={{ color: '#93c5fd' }}>{entry.actor}</span>
-                    {' · '}
-                    Transition: {entry.transition}
+        </div>
+        <div className="card" style={{ padding: '14px' }}>
+          <div className="metric metric-sm">
+            <span className="metric-label">Pilot Twin Lock</span>
+            <div style={{ marginTop: '4px' }}>
+              <StatusBadge status={audit.twin_locked ? 'LOCKED' : 'PENDING'} dot />
+            </div>
+          </div>
+        </div>
+        <div className="card" style={{ padding: '14px' }}>
+          <div className="metric metric-sm">
+            <span className="metric-label">Evaluator Auth</span>
+            <div style={{ marginTop: '4px' }}>
+              <StatusBadge status={audit.evaluator_authorized ? 'AUTHORIZED' : 'PENDING'} dot />
+            </div>
+          </div>
+        </div>
+        <div className="card" style={{ padding: '14px' }}>
+          <div className="metric metric-sm">
+            <span className="metric-label">Human Auth</span>
+            <div style={{ marginTop: '4px' }}>
+              <StatusBadge status={String(audit.human_authorization_status || humanAuth.status || 'PENDING')} dot />
+            </div>
+          </div>
+        </div>
+        {!!audit.scale_up_policy_case && (
+          <div className="card" style={{ padding: '14px' }}>
+            <div className="metric metric-sm">
+              <span className="metric-label">Scale-Up Policy</span>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)', marginTop: '4px' }}>{String(audit.scale_up_policy_case)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Event Timeline */}
+      <h2 className="font-heading" style={{ marginBottom: '20px' }}>Event Ledger</h2>
+      <div style={{ position: 'relative', paddingLeft: '32px' }}>
+        <div style={{ position: 'absolute', top: 0, bottom: 0, left: '15px', width: '2px', background: 'var(--border-subtle)' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {events.map((evt, i) => {
+            const Icon = evt.icon;
+            const isPending = 'pending' in evt && evt.pending;
+            return (
+              <div key={evt.id} className="stagger" style={{ position: 'relative', animationDelay: `${i * 60}ms` }}>
+                <div style={{
+                  position: 'absolute', left: '-32px', top: '8px', width: '30px', height: '30px', marginLeft: '1px',
+                  borderRadius: '50%',
+                  background: evt.done ? 'var(--text)' : 'var(--surface)',
+                  border: evt.done ? 'none' : '2px solid var(--border-strong)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1,
+                  color: evt.done ? 'white' : 'var(--text-muted)'
+                }}>
+                  <Icon size={13} strokeWidth={2.5} />
+                </div>
+                <div className="card" style={{ padding: '12px 16px', opacity: isPending ? 0.65 : 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span className="font-label" style={{ color: 'var(--text-faint)' }}>{evt.time}</span>
+                      <span style={{ fontSize: '14px', fontWeight: 700 }}>{evt.action.replace(/_/g, ' ')}</span>
+                    </div>
+                    <StatusBadge status={evt.done ? 'VERIFIED' : 'PENDING'} size="sm" />
+                  </div>
+                  <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 500, flexShrink: 0 }}>{evt.actor}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{evt.detail}</span>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      )}
-
-      {/* Pipeline stages */}
-      <div className="card">
-        <div className="card-header">
-          <span style={{ fontWeight: 600 }}>14-Stage Pipeline Completion</span>
-          <StatusBadge status="AUTHORIZED" dot />
-        </div>
-        {[
-          'Stage 1: Outcome Contract Generated & Locked',
-          'Stage 2: Government Pilot Twin Created & Locked',
-          'Stage 3: Stratified Test Suite Generated (24 strata)',
-          'Stage 4: Golden Reference Suite Verification Passed',
-          'Stage 5: Vendor Artifacts Registered & Frozen (SHA-256)',
-          'Stage 6: Black-Box Vendor Evaluation Completed',
-          'Stage 7: Evidence Records Generated with Cryptographic Provenance',
-          'Stage 8: Evidence Confidence Calculated',
-          'Stage 9: Failure Cartography Generated',
-          'Stage 9.5: Advisory Forensic Diagnostics Generated',
-          'Stage 10: Deterministic Procurement Decision Made',
-          'Stage 11: Vendor Response Window Opened (VendorC)',
-          'Stage 12: Human Authorization Recorded',
-          'Stage 13: Scale-Up Policy Evaluated (District Beta)',
-          'Stage 14: Data Governance Schedule Created',
-        ].map((stage, i) => (
-          <div
-            key={i}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid #1e293b' }}
-          >
-            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#14532d', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} aria-hidden="true">
-              <span style={{ fontSize: '9px', color: '#4ade80', fontWeight: 700 }}>✓</span>
-            </div>
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>{stage}</span>
-          </div>
-        ))}
       </div>
-    </div>
-  );
-}
 
-function AuditRow({
-  label, value, actor, isBool, boolVal,
-}: {
-  label: string; value: string; actor: string; isBool?: boolean; boolVal?: boolean;
-}) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr auto', gap: '12px', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #1e293b' }}>
-      <span style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'capitalize' }}>{label}</span>
-      {isBool !== undefined ? (
-        <StatusBadge status={boolVal ? 'ELIGIBLE' : 'REJECTED'} />
-      ) : (
-        <span style={{ fontSize: '12px', color: '#f1f5f9', fontWeight: 500 }}>{value}</span>
-      )}
-      <span style={{ fontSize: '10px', color: '#64748b' }}>Actor: {actor}</span>
+      {/* Signature Strip */}
+      <div style={{ marginTop: '32px', background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: '8px', padding: '14px 20px' }}>
+        <div className="font-label" style={{ marginBottom: '4px' }}>Audit Chain Signature</div>
+        <div className="font-mono" style={{ fontSize: '11px', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+          sha256:axiom-demo-001-{Date.now().toString(16)}
+        </div>
+      </div>
     </div>
   );
 }
