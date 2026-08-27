@@ -153,3 +153,82 @@ Axiom AI functions completely offline with zero external network or database req
   cp .env.example .env
   # Add your OPENAI_API_KEY in .env
   ```
+
+---
+
+## Frontend Development (Person 1)
+
+The `frontend/` directory contains the Axiom AI Governance Dashboard — a React + TypeScript + Vite web application that consumes the FastAPI backend.
+
+### Stack
+
+- **React 18** + **TypeScript** + **Vite**
+- **React Router** for client-side routing
+- **Tailwind CSS v4** for styling
+- **Lucide React** for icons
+
+### Frontend Installation & Running
+
+```powershell
+# From repository root
+cd frontend
+npm install
+npm run dev   # Starts dev server on http://localhost:5173
+```
+
+The frontend dev server proxies all `/api/*` and `/health` requests to `http://localhost:8000` automatically — no CORS configuration needed in development.
+
+### Running Both (Development)
+
+```powershell
+# Terminal 1 — Backend
+.venv\Scripts\Activate.ps1
+python -m uvicorn app.main:app --reload
+
+# Terminal 2 — Frontend
+cd frontend
+npm run dev
+```
+
+Then open [http://localhost:5173](http://localhost:5173).
+
+### Frontend Environment
+
+```bash
+# frontend/.env.example
+VITE_API_BASE_URL=   # Leave empty to use Vite proxy (recommended)
+# Set to http://localhost:8000 if not using proxy
+```
+
+### Canonical Demo Workflow
+
+1. Start the backend (`python -m uvicorn app.main:app --reload`).
+2. Start the frontend (`cd frontend && npm run dev`).
+3. Open [http://localhost:5173](http://localhost:5173).
+4. Click **"Run Canonical Demo"** — this calls `POST /api/v1/demo/evaluate`.
+5. The complete governance pipeline executes (14 stages, ~2s).
+6. Dashboard populates with all vendor scorecards, failure maps, diagnostics, procurement decisions, scale-up evaluation, and human authorization state.
+
+### Frontend Routes
+
+| Route | Description |
+| :--- | :--- |
+| `/` | Main governance dashboard |
+| `/evaluation/:id/vendors` | Vendor scorecards overview |
+| `/evaluation/:id/vendors/:vendorId` | Individual vendor detail |
+| `/evaluation/:id/failure-map` | Failure Cartography |
+| `/evaluation/:id/diagnostics` | Forensic Diagnostic Intelligence |
+| `/evaluation/:id/decision` | Procurement Decision (deterministic) |
+| `/evaluation/:id/scale-up` | Scale-Up Policy Evaluation |
+| `/evaluation/:id/authorization` | Human Authorization Form |
+| `/evaluation/:id/audit` | Audit Trail |
+| `/evaluation/:id/governance` | Data Governance |
+
+### Governance Principles in the Frontend
+
+- The frontend **never calculates eligibility** — all procurement decisions come from the backend.
+- Diagnostic output is clearly labeled **"Advisory — does not authorize procurement"**.
+- Human Authorization requires **non-placeholder justification** (minimum 10 characters).
+- An explicit **override warning** is shown when the human decision disagrees with AI recommendation.
+- Frontend applies **defense-in-depth sanitization** to filter sensitive keys (seeds, API keys, model weights) even if accidentally included in a response.
+- No functions named `authorizeDeployment`, `approveProcurement`, `releasePayment`, or `awardContract` exist in the frontend.
