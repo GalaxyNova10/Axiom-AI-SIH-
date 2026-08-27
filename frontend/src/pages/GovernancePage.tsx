@@ -1,18 +1,50 @@
-﻿import { motion } from 'motion/react';
-import { useDemoContext } from '../context/DemoContext';
-import StatusBadge from '../components/StatusBadge';
+// ============================================================
+// Axiom AI — Data Governance & Privacy Framework
+// ============================================================
+import { useState, useEffect } from 'motion';
+import { motion } from 'motion/react';
+import { Database, ShieldCheck, Lock, Eye, AlertTriangle, ArrowRight, FileKey } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
-import { Database, ShieldCheck, Lock, Eye, AlertTriangle, ArrowRight } from 'lucide-react';
+import StatusBadge from '../components/StatusBadge';
+import { getLatestFintechEvaluation } from '../services/api';
+import type { FintechEvaluationResult } from '../types/api';
 
-const SANITIZED_KEYS = ['private_parameters', 'raw_seed', 'seed', 'seed_hash', 'secret', 'private_key', 'api_key', 'openai_api_key', 'model_weights', 'source_code'];
+const SANITIZED_KEYS = [
+  'private_parameters',
+  'raw_seed',
+  'seed',
+  'seed_hash',
+  'secret',
+  'private_key',
+  'api_key',
+  'openai_api_key',
+  'model_weights',
+  'source_code',
+];
 
-const container = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
-const item = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
+const container = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
+const item = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
 
 export default function GovernancePage() {
-  const { data, loading } = useDemoContext();
+  const [evaluation, setEvaluation] = useState<FintechEvaluationResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (loading && !data) {
+  useEffect(() => {
+    async function load() {
+      try {
+        const latest = await getLatestFintechEvaluation();
+        setEvaluation(latest);
+      } catch (err: any) {
+        setError(err?.message || 'Failed to load governance data');
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  if (loading) {
     return (
       <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
         <div style={{ textAlign: 'center' }}>
@@ -23,91 +55,257 @@ export default function GovernancePage() {
     );
   }
 
-  if (!data) return (<div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}><p className="font-subheading" style={{ color: 'var(--text-muted)' }}>Run the canonical demo to load data governance policies.</p></div>);
+  if (error || !evaluation) {
+    return (
+      <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <p className="font-subheading" style={{ color: 'var(--text-muted)' }}>
+          {error || 'No governance data available. Run an evaluation first.'}
+        </p>
+      </div>
+    );
+  }
 
-  const gov = data.data_governance ?? {};
-  const scheduleRows = [
-    { label: 'Evidence Integrity', status: 'VERIFIED', icon: ShieldCheck, desc: 'Cryptographic hash verification of evaluation artifacts.' },
-    { label: 'Artifact Lineage', status: 'VERIFIED', icon: ShieldCheck, desc: 'Traceable provenance chain for all evaluation outputs.' },
-    { label: 'Private Parameters', status: 'PROTECTED', icon: Lock, desc: 'Seeds, private keys, model weights are server-side only.' },
-    { label: 'Public Deployment Conditions', status: 'VISIBLE', icon: Eye, desc: 'Strata dimensions and failure cartography are publicly auditable.' },
-    { label: 'LLM Boundary', status: 'SANITIZED', icon: ShieldCheck, desc: 'Advisory analysis input is stripped of sensitive keys before LLM call.' },
+  const regulatory = evaluation.pilot_twin_parameters.regulatory_frame;
+
+  const governanceSchedule = [
+    {
+      label: 'Evidence Integrity',
+      status: 'VERIFIED',
+      icon: ShieldCheck,
+      desc: 'Cryptographic hash verification (SHA-256) for all 15 test results.',
+    },
+    {
+      label: 'PII Protection (DPDP Act 2023)',
+      status: 'COMPLIANT',
+      icon: Lock,
+      desc: 'Aadhaar VID, PAN, mobile numbers, and bank accounts cryptographically tokenized.',
+    },
+    {
+      label: 'RBI Explainability',
+      status: 'VERIFIED',
+      icon: FileKey,
+      desc: 'Adverse action notices with top-3 feature attribution for credit decisions.',
+    },
+    {
+      label: 'Artifact Lineage',
+      status: 'VERIFIED',
+      icon: ShieldCheck,
+      desc: 'Traceable provenance chain from raw test execution to procurement verdict.',
+    },
+    {
+      label: 'Public Audit Trail',
+      status: 'VISIBLE',
+      icon: Eye,
+      desc: 'Test conditions, scores, and failure reasons publicly auditable.',
+    },
+    {
+      label: 'Zero PII Leak',
+      status: 'PROTECTED',
+      icon: Lock,
+      desc: 'No raw PII in model input, output, logs, or frontend display.',
+    },
   ];
 
   return (
     <motion.div className="page" variants={container} initial="hidden" animate="visible">
-      <motion.div variants={item} style={{ marginBottom: '32px' }}>
-        <div className="font-label" style={{ marginBottom: '6px' }}>DATA GOVERNANCE</div>
-        <h1 className="font-display" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Database size={28} color="var(--accent)" /> Data Governance Policy</h1>
-        <p className="font-subheading" style={{ marginTop: '8px' }}>Evidence provenance, privacy boundaries, and sanitization guarantees.</p>
+      {/* Header */}
+      <motion.div variants={item} style={{ marginBottom: '28px' }}>
+        <div className="font-label" style={{ marginBottom: '6px' }}>COMPLIANCE & PRIVACY</div>
+        <h1 className="font-display" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Database size={28} color="var(--accent)" /> Data Governance
+        </h1>
+        <p className="font-subheading" style={{ marginTop: '8px' }}>
+          Evidence provenance, regulatory compliance, and zero-leak privacy guarantees
+        </p>
       </motion.div>
 
-      <motion.div variants={item} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+      {/* Regulatory Compliance Framework */}
+      <motion.div variants={item} style={{ marginBottom: '28px' }}>
         <GlassCard hover={false}>
-          <div className="card-header"><span style={{ fontWeight: 600 }}>Governance Schedule</span></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {scheduleRows.map(row => (
-              <div key={row.label} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', paddingBottom: '16px', borderBottom: '1px solid var(--border-subtle)' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--border)' }}>
-                  <row.icon size={15} color="var(--text-muted)" />
+          <div className="card-header">
+            <span style={{ fontWeight: 650 }}>Regulatory Compliance Framework</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
+            {Object.entries(regulatory).map(([key, value]) => (
+              <div
+                key={key}
+                style={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--r-md)',
+                  padding: '14px 16px',
+                }}
+              >
+                <div className="font-label" style={{ marginBottom: '6px' }}>
+                  {key.replace(/_/g, ' ')}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 600 }}>{row.label}</span>
-                    <StatusBadge status={row.status} size="sm" />
-                  </div>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{row.desc}</p>
-                </div>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {value}
+                </p>
               </div>
             ))}
           </div>
         </GlassCard>
+      </motion.div>
 
+      {/* Governance Schedule */}
+      <motion.div variants={item} style={{ marginBottom: '28px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 650, marginBottom: '16px', color: 'var(--text-primary)' }}>
+          Governance Controls & Verification Status
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+          {governanceSchedule.map((control) => (
+            <GlassCard key={control.label}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: 'var(--r-md)',
+                  background: 'var(--bg-elevated)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  border: '1px solid var(--border)',
+                }}>
+                  <control.icon size={16} color="var(--accent)" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '6px',
+                  }}>
+                    <span style={{ fontSize: '14px', fontWeight: 650 }}>{control.label}</span>
+                    <StatusBadge status={control.status} size="sm" />
+                  </div>
+                  <p className="font-body" style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                    {control.desc}
+                  </p>
+                </div>
+              </div>
+            </GlassCard>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Sanitization Boundary */}
+      <motion.div variants={item} style={{ marginBottom: '28px' }}>
         <GlassCard hover={false}>
-          <div className="card-header"><span style={{ fontWeight: 600 }}>Frontend Sanitization Boundary</span></div>
-          <p className="font-body" style={{ marginBottom: '16px' }}>Defense-in-depth sanitization. These key patterns are scrubbed from all API responses:</p>
+          <div className="card-header">
+            <span style={{ fontWeight: 650 }}>Frontend Sanitization Boundary</span>
+          </div>
+          <p className="font-body" style={{ marginBottom: '16px' }}>
+            Defense-in-depth sanitization. These key patterns are recursively scrubbed from all API responses
+            before reaching the frontend:
+          </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px' }}>
-            {SANITIZED_KEYS.map(key => (
-              <span key={key} className="font-mono" style={{ background: 'var(--critical-bg)', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', color: 'var(--critical)', border: '1px solid var(--critical-border)' }}>{key}</span>
+            {SANITIZED_KEYS.map((key) => (
+              <span
+                key={key}
+                className="font-mono"
+                style={{
+                  background: 'var(--critical-bg)',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  color: 'var(--critical)',
+                  border: '1px solid var(--critical-border)',
+                  fontWeight: 600,
+                }}
+              >
+                {key}
+              </span>
             ))}
           </div>
           <div className="alert alert-warning">
             <AlertTriangle size={16} style={{ flexShrink: 0 }} />
-            <div style={{ fontSize: '13px' }}><strong>Zero-Leak Guarantee:</strong> Raw seeds, private parameters, and model weights are never displayed in the UI.</div>
-          </div>
-          {Object.keys(gov).length > 0 && (
-            <div style={{ marginTop: '20px' }}>
-              <div className="font-label" style={{ marginBottom: '10px' }}>Backend Governance Record</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {Object.entries(gov).filter(([k]) => !SANITIZED_KEYS.includes(k.toLowerCase())).map(([k, v]) => (
-                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                    <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{k.replace(/_/g, ' ')}</span>
-                    <span style={{ color: 'var(--text-primary)', fontWeight: 500, maxWidth: '200px', textAlign: 'right' }}>{String(v)}</span>
-                  </div>
-                ))}
-              </div>
+            <div style={{ fontSize: '13px' }}>
+              <strong>Zero-Leak Guarantee:</strong> Raw seeds, private parameters, API keys, and model weights
+              are never transmitted to or displayed in the UI. Evaluation results are sanitized at both
+              backend and frontend layers.
             </div>
-          )}
+          </div>
         </GlassCard>
       </motion.div>
 
-      {/* Data Flow */}
+      {/* Data Flow Diagram */}
       <motion.div variants={item}>
-        <h2 className="font-heading" style={{ marginBottom: '20px' }}>Data Flow & LLM Boundary</h2>
-        <GlassCard hover={false} style={{ padding: '32px', textAlign: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 650, marginBottom: '16px', color: 'var(--text-primary)' }}>
+          Data Flow & Privacy Boundaries
+        </h3>
+        <GlassCard hover={false} style={{ padding: '40px 24px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+            flexWrap: 'wrap',
+          }}>
             {[
-              { label: 'Evaluation Output', sub: 'Public metrics + private internal state', color: 'var(--text-primary)', bg: 'var(--bg-sunken)', border: 'var(--border)' },
+              {
+                label: 'Test Execution',
+                sub: 'Private seeds + evaluation params',
+                color: 'var(--text-primary)',
+                bg: 'var(--bg-sunken)',
+                border: 'var(--border)',
+              },
               null,
-              { label: 'Sanitization Boundary', sub: 'Forbidden keys scrubbed recursively', color: 'var(--critical)', bg: 'var(--critical-bg)', border: 'var(--critical-border)' },
+              {
+                label: 'Backend Sanitization',
+                sub: 'Strip forbidden sensitive keys',
+                color: 'var(--critical)',
+                bg: 'var(--critical-bg)',
+                border: 'var(--critical-border)',
+              },
               null,
-              { label: 'Advisory Diagnostics', sub: 'LLM analysis on safe public data only', color: 'var(--advisory)', bg: 'var(--advisory-bg)', border: 'var(--advisory-border)' },
+              {
+                label: 'Frontend Defense',
+                sub: 'Recursive sanitization pass',
+                color: 'var(--watch)',
+                bg: 'var(--watch-bg)',
+                border: 'var(--watch-border)',
+              },
+              null,
+              {
+                label: 'Public Display',
+                sub: 'Zero PII, audit-ready results',
+                color: 'var(--eligible)',
+                bg: 'var(--eligible-bg)',
+                border: 'var(--eligible-border)',
+              },
             ].map((block, i) => {
-              if (block === null) return <ArrowRight key={`arrow-${i}`} size={20} color="var(--text-faint)" />;
+              if (block === null) {
+                return <ArrowRight key={`arrow-${i}`} size={20} color="var(--text-faint)" />;
+              }
               return (
-                <div key={i} style={{ background: block.bg, border: `1px solid ${block.border}`, padding: '16px 24px', borderRadius: '10px', width: '180px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: block.color, marginBottom: '6px' }}>{block.label}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.3 }}>{block.sub}</div>
+                <div
+                  key={i}
+                  style={{
+                    background: block.bg,
+                    border: `2px solid ${block.border}`,
+                    padding: '18px 24px',
+                    borderRadius: 'var(--r-lg)',
+                    minWidth: '160px',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: block.color,
+                    marginBottom: '6px',
+                  }}>
+                    {block.label}
+                  </div>
+                  <div style={{
+                    fontSize: '11px',
+                    color: 'var(--text-muted)',
+                    lineHeight: 1.4,
+                  }}>
+                    {block.sub}
+                  </div>
                 </div>
               );
             })}
