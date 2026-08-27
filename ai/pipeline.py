@@ -33,6 +33,7 @@ from ai.human_authorization import create_authorization, review_override, get_au
 from ai.scale_up import ScaleUpRequest, evaluate_scale_up_request
 from ai.scale_policy import evaluate_scale_policy
 from ai.data_governance import create_data_governance_schedule, sanitize_citizen_data
+from ai.evaluation_intelligence import generate_forensic_diagnosis
 
 
 @dataclass
@@ -50,6 +51,7 @@ class AxiomDemoResult:
     human_authorization: Dict[str, Any]
     scale_up_evaluation: Dict[str, Any]
     data_governance: Dict[str, Any]
+    diagnostic_intelligence: Dict[str, Any]
     audit_summary: Dict[str, Any]
 
     def to_public_dict(self) -> Dict[str, Any]:
@@ -305,6 +307,20 @@ def run_axiom_demo(
             "explanation": fm_exp,
         }
 
+    # --- STAGE 9.5: AI Forensic Diagnostic (Advisory Only) ---
+    # This layer interprets evidence but NEVER modifies it.
+    # It cannot alter KPI values, thresholds, severity levels, confidence scores,
+    # procurement decisions, scale-up decisions, or human authorization.
+    diagnostic_reports = {}
+    for vid, run in evaluation_runs.items():
+        diag = generate_forensic_diagnosis(
+            evaluation_run=run,
+            failure_map=failure_maps[vid],
+            pilot_twin=pilot_twin,
+            contract=contract,
+        )
+        diagnostic_reports[vid] = diag.to_dict()
+
     # --- STAGE 10: Procurement Decision Engine ---
     procurement_decisions = {}
     pt_stratum_alpha = "INTERMITTENT_LOW_END_REGIONAL_NOISY"
@@ -498,5 +514,6 @@ def run_axiom_demo(
         human_authorization=human_auth_summary,
         scale_up_evaluation=scale_up_summary,
         data_governance=data_gov_summary,
+        diagnostic_intelligence=diagnostic_reports,
         audit_summary=audit_summary,
     )

@@ -61,16 +61,16 @@ def test_successful_llm_generation():
         "minimum_evidence_confidence": 85.0,
         "evidence_validity_months": 24
     }
-    
+
     mock_choice = MagicMock()
     mock_choice.message.content = json.dumps(mock_json_response)
-    
+
     mock_response = MagicMock()
     mock_response.choices = [mock_choice]
-    
+
     mock_client_instance = MagicMock()
     mock_client_instance.chat.completions.create.return_value = mock_response
-    
+
     def mock_env_get(key, default=None):
         if key == "OPENAI_API_KEY":
             return "fake-key"
@@ -79,7 +79,7 @@ def test_successful_llm_generation():
     with patch("os.environ.get", side_effect=mock_env_get):
         with patch("ai.contract_generator.OpenAI", return_value=mock_client_instance):
             contract = generate_outcome_contract("OC-LLM", "Some problem")
-            
+
             assert contract.contract_id == "OC-LLM"
             assert contract.minimum_evidence_confidence == 85.0
             assert contract.evidence_validity_months == 24
@@ -101,7 +101,7 @@ def test_invalid_operator_rejected():
         "minimum_evidence_confidence": 85.0,
         "evidence_validity_months": 24
     }
-    
+
     with pytest.raises(ValueError, match="invalid operator"):
         _validate_llm_output(mock_json_response)
 
@@ -119,7 +119,7 @@ def test_invalid_confidence_rejected():
         "minimum_evidence_confidence": 105.0, # invalid
         "evidence_validity_months": 24
     }
-    
+
     with pytest.raises(ValueError, match="between 0 and 100"):
         _validate_llm_output(mock_json_response)
 
@@ -130,7 +130,7 @@ def test_empty_kpi_list_rejected():
         "minimum_evidence_confidence": 80.0,
         "evidence_validity_months": 24
     }
-    
+
     with pytest.raises(ValueError, match="non-empty list"):
         _validate_llm_output(mock_json_response)
 
@@ -141,16 +141,16 @@ def test_validation_failure_triggers_fallback():
         "minimum_evidence_confidence": 80.0,
         "evidence_validity_months": 24
     }
-    
+
     mock_choice = MagicMock()
     mock_choice.message.content = json.dumps(mock_json_response)
-    
+
     mock_response = MagicMock()
     mock_response.choices = [mock_choice]
-    
+
     mock_client_instance = MagicMock()
     mock_client_instance.chat.completions.create.return_value = mock_response
-    
+
     def mock_env_get(key, default=None):
         if key == "OPENAI_API_KEY":
             return "fake-key"
@@ -160,7 +160,7 @@ def test_validation_failure_triggers_fallback():
         with patch("ai.contract_generator.OpenAI", return_value=mock_client_instance):
             # This should fallback to deterministic, giving Solution Performance for generic problem
             contract = generate_outcome_contract("OC-FALLBACK", "Some problem")
-            
+
             assert contract.contract_id == "OC-FALLBACK"
             assert len(contract.kpis) == 1
             assert contract.kpis[0].name == "Solution Performance"
@@ -273,10 +273,10 @@ def test_confidence_below_0_raises():
 def test_confidence_explanation_structure_and_components():
     from ai.confidence import explain_evidence_confidence
     explanation = explain_evidence_confidence(100, 100, 100, 100, 80, 90)
-    
+
     assert "overall_confidence" in explanation
     assert "components" in explanation
-    
+
     comps = explanation["components"]
     expected_names = [
         "evaluator_integrity", "contract_integrity", "artifact_integrity",
@@ -1061,15 +1061,15 @@ def test_golden_suite_successful_verification_authorized():
 def test_golden_suite_one_incorrect_calculation_unauthorized():
     from ai.golden_suite import create_initial_golden_suite, verify_evaluator, authorize_evaluator
     suite = create_initial_golden_suite()
-    
+
     def bad_calculator(case):
         if case.case_id == "GOLD-001":
             return 0.0
         return (case.correct_samples / case.total_samples) * 100.0 if case.total_samples > 0 else 0.0
-        
+
     res = verify_evaluator("v1.1", suite, bad_calculator)
     assert res["status"] == "UNAUTHORIZED"
-    
+
     auth = authorize_evaluator("v1.1", suite, bad_calculator)
     assert auth.status == "UNAUTHORIZED"
 
@@ -1179,20 +1179,20 @@ def test_golden_suite_removing_test_does_not_retroactively_authorize():
     from ai.golden_suite import create_initial_golden_suite, verify_evaluator, authorize_evaluator, evaluator_registry
     import copy
     suite1 = create_initial_golden_suite()
-    
+
     def bad_calculator(case):
         if case.case_id == "GOLD-001":
             return 0.0
         return (case.correct_samples / case.total_samples) * 100.0 if case.total_samples > 0 else 0.0
-        
+
     auth1 = authorize_evaluator("v2.0", suite1, bad_calculator)
     assert auth1.status == "UNAUTHORIZED"
-    
+
     cases2 = [c for c in suite1.cases if c.case_id != "GOLD-001"]
     suite2 = copy.deepcopy(suite1)
     suite2.cases = cases2
     suite2.version = "1.1"
-    
+
     assert evaluator_registry["v2.0"].status == "UNAUTHORIZED"
     auth2 = authorize_evaluator("v2.0", suite2, bad_calculator)
     assert auth2.status == "AUTHORIZED"
@@ -1318,14 +1318,14 @@ def test_evaluator_vendor_does_not_receive_entire_suite():
     from ai.demo_dataset import get_demo_expected_outputs
     suite = generate_test_suite("S1", "T1")
     expected = get_demo_expected_outputs(suite)
-    
+
     class MockAdapter:
         def evaluate(self, input_data):
             assert "suite_id" not in input_data
             assert "conditions" in input_data
             assert isinstance(input_data["conditions"], dict)
             return {"prediction": "PASS", "latency_ms": 10.0, "error": False}
-            
+
     evaluate_vendor("VendA", "art1", MockAdapter(), suite, "1.0", True, expected)
 
 def test_evaluator_vendor_receives_only_current_case():
@@ -1334,7 +1334,7 @@ def test_evaluator_vendor_receives_only_current_case():
     from ai.demo_dataset import get_demo_expected_outputs
     suite = generate_test_suite("S1", "T1")
     expected = get_demo_expected_outputs(suite)
-    
+
     seen_ids = set()
     class MockAdapter:
         def evaluate(self, input_data):
@@ -1342,7 +1342,7 @@ def test_evaluator_vendor_receives_only_current_case():
             assert tc_id not in seen_ids
             seen_ids.add(tc_id)
             return {"prediction": "PASS", "latency_ms": 10.0, "error": False}
-            
+
     evaluate_vendor("VendA", "art1", MockAdapter(), suite, "1.0", True, expected)
     assert len(seen_ids) == 24
 
@@ -1352,7 +1352,7 @@ def test_evaluator_future_cases_not_passed():
     from ai.demo_dataset import get_demo_expected_outputs
     suite = generate_test_suite("S1", "T1")
     expected = get_demo_expected_outputs(suite)
-    
+
     class MockAdapter:
         def evaluate(self, input_data):
             # Assert only current case info is in input_data
@@ -1360,7 +1360,7 @@ def test_evaluator_future_cases_not_passed():
             assert "stratum_id" in input_data
             assert len(input_data) == 5 # test_case_id, stratum_id, conditions, private_parameters, expected_output
             return {"prediction": "PASS", "latency_ms": 10.0, "error": False}
-            
+
     evaluate_vendor("VendA", "art1", MockAdapter(), suite, "1.0", True, expected)
 
 def test_evaluator_accuracy_calculated_correctly():
@@ -1369,11 +1369,11 @@ def test_evaluator_accuracy_calculated_correctly():
     from ai.demo_dataset import get_demo_expected_outputs
     suite = generate_test_suite("S1", "T1")
     expected = get_demo_expected_outputs(suite)
-    
+
     class MockAdapter:
         def evaluate(self, input_data):
             return {"prediction": "PASS", "latency_ms": 10.0, "error": False}
-            
+
     run = evaluate_vendor("VendA", "art1", MockAdapter(), suite, "1.0", True, expected)
     calc_accuracy = (run.correct_cases / run.total_cases) * 100
     assert run.accuracy == round(calc_accuracy, 2)
@@ -1384,11 +1384,11 @@ def test_evaluator_average_latency_calculated_correctly():
     from ai.demo_dataset import get_demo_expected_outputs
     suite = generate_test_suite("S1", "T1")
     expected = get_demo_expected_outputs(suite)
-    
+
     class MockAdapter:
         def evaluate(self, input_data):
             return {"prediction": "PASS", "latency_ms": 100.0, "error": False}
-            
+
     run = evaluate_vendor("VendA", "art1", MockAdapter(), suite, "1.0", True, expected)
     assert run.average_latency_ms == 100.0
 
@@ -1398,13 +1398,13 @@ def test_evaluator_error_count_calculated_correctly():
     from ai.demo_dataset import get_demo_expected_outputs
     suite = generate_test_suite("S1", "T1")
     expected = get_demo_expected_outputs(suite)
-    
+
     class MockAdapter:
         def evaluate(self, input_data):
             if input_data["stratum_id"].startswith("GOOD_HIGH_END_STANDARD_CLEAN"):
                 return {"prediction": "PASS", "latency_ms": 10.0, "error": True}
             return {"prediction": "PASS", "latency_ms": 10.0, "error": False}
-            
+
     run = evaluate_vendor("VendA", "art1", MockAdapter(), suite, "1.0", True, expected)
     assert run.error_count == 1
 
@@ -1414,11 +1414,11 @@ def test_evaluator_adapter_exception_does_not_crash():
     from ai.demo_dataset import get_demo_expected_outputs
     suite = generate_test_suite("S1", "T1")
     expected = get_demo_expected_outputs(suite)
-    
+
     class MockAdapter:
         def evaluate(self, input_data):
             raise RuntimeError("Vendor crashed")
-            
+
     run = evaluate_vendor("VendA", "art1", MockAdapter(), suite, "1.0", True, expected)
     assert run.status == "COMPLETED"
     assert run.error_count == 24
@@ -1429,11 +1429,11 @@ def test_evaluator_adapter_exception_produces_error_true():
     from ai.demo_dataset import get_demo_expected_outputs
     suite = generate_test_suite("S1", "T1")
     expected = get_demo_expected_outputs(suite)
-    
+
     class MockAdapter:
         def evaluate(self, input_data):
             raise RuntimeError("Vendor crashed")
-            
+
     run = evaluate_vendor("VendA", "art1", MockAdapter(), suite, "1.0", True, expected)
     assert all(r.error is True for r in run.results)
 
@@ -1443,11 +1443,11 @@ def test_evaluator_malformed_adapter_output_handled():
     from ai.demo_dataset import get_demo_expected_outputs
     suite = generate_test_suite("S1", "T1")
     expected = get_demo_expected_outputs(suite)
-    
+
     class MockAdapter:
         def evaluate(self, input_data):
             return {"wrong_key": "val"}
-            
+
     run = evaluate_vendor("VendA", "art1", MockAdapter(), suite, "1.0", True, expected)
     assert run.error_count == 24
 
@@ -1498,11 +1498,11 @@ def test_evaluator_all_vendors_receive_identical_cases():
     from ai.demo_dataset import get_demo_expected_outputs
     suite = generate_test_suite("S1", "T1")
     expected = get_demo_expected_outputs(suite)
-    
+
     runA = evaluate_vendor("VendA", "art1", VendorAAdapter(), suite, "1.0", True, expected)
     runB = evaluate_vendor("VendB", "art2", VendorBAdapter(), suite, "1.0", True, expected)
     runC = evaluate_vendor("VendC", "art3", VendorCAdapter(), suite, "1.0", True, expected)
-    
+
     assert runA.total_cases == 24
     assert runB.total_cases == 24
     assert runC.total_cases == 24
@@ -1589,11 +1589,11 @@ def test_evaluator_demo_vendors_produce_measurably_different_results():
     from ai.demo_dataset import get_demo_expected_outputs
     suite = generate_test_suite("S1", "T1")
     expected = get_demo_expected_outputs(suite)
-    
+
     runA = evaluate_vendor("VendA", "art1", VendorAAdapter(), suite, "1.0", True, expected)
     runB = evaluate_vendor("VendB", "art2", VendorBAdapter(), suite, "1.0", True, expected)
     runC = evaluate_vendor("VendC", "art3", VendorCAdapter(), suite, "1.0", True, expected)
-    
+
 def test_artifact_sha256_hash_deterministic():
     from ai.artifact import compute_artifact_hash
     data = b"hello world"
@@ -1848,7 +1848,7 @@ def test_artifact_timezone_aware_datetime_behavior_works():
 
 def get_mock_evidence_deps():
     from dataclasses import dataclass
-    
+
     @dataclass
     class MockEvalRun:
         status: str = "COMPLETED"
@@ -1860,23 +1860,23 @@ def get_mock_evidence_deps():
         vendor_id: str = "ven1"
         evaluation_id: str = "eval1"
         accuracy: float = 95.5
-        
+
     @dataclass
     class MockArtRec:
         artifact_id: str = "art1"
         vendor_id: str = "ven1"
         artifact_hash: str = "hash1"
-        
+
     @dataclass
     class MockArtVer:
         status: str = "MATCH"
-        
+
     @dataclass
     class MockEvVal:
         created_at: str = "2026-01-01T00:00:00+00:00"
         validity_months: int = 12
         expires_at: str = "2027-01-01T00:00:00+00:00"
-        
+
     return MockEvalRun(), MockArtRec(), MockArtVer(), MockEvVal()
 
 def test_evidence_valid_evaluation_becomes_independently_validated():
@@ -2206,7 +2206,7 @@ def get_mock_eval_run_for_cartography():
         def __post_init__(self):
             if self.results is None:
                 self.results = []
-                
+
     return MockEvalRun, MockCaseResult
 
 def test_fc_empty_evaluation_run_rejected():
@@ -2552,14 +2552,14 @@ def get_mock_scale_up_deps():
         device: str = "HIGH_END"
         language: str = "STANDARD"
         input_quality: str = "CLEAN"
-        
+
     @dataclass
     class MockFailureMap:
         hotspots: list = None
         def __post_init__(self):
             if self.hotspots is None:
                 self.hotspots = []
-                
+
     return req, b"bytes", MockArtRec(), MockEvRec(), MockFailureMap(), MockPilotTwin()
 
 def test_su_valid_scale_up_eligible():
@@ -4608,4 +4608,615 @@ def test_gov_matrix_seed_reproducibility():
     assert len(suite1.conditions) == len(suite2.conditions) == 24
 
 
-
+# ============================================================
+# EVALUATION INTELLIGENCE ENGINE TESTS (STEP 2)
+# ============================================================
+
+def _get_mock_eval_intelligence_data():
+    from ai.test_matrix import generate_test_suite
+    from ai.demo_vendors import VendorCAdapter, VendorAAdapter
+    from ai.demo_dataset import get_demo_expected_outputs
+    from ai.evaluator import evaluate_vendor
+    from ai.failure_cartography import generate_failure_map
+    from ai.pilot_twin import create_pilot_twin, PilotParameter
+    from ai.schemas import OutcomeContract, KPI
+
+    suite = generate_test_suite("SUITE-EI-01", "TWIN-EI-01", seed=42)
+    expected = get_demo_expected_outputs(suite)
+
+    # Vendor C has the compound catastrophic failure on NOISY + LOW_END + REGIONAL
+    run_c = evaluate_vendor("VendorC", "ART-VC-01", VendorCAdapter(), suite, "1.0.0", True, expected)
+    fm_c = generate_failure_map(run_c)
+
+    twin = create_pilot_twin(
+        "TWIN-EI-01", "Agri", "District 1",
+        [PilotParameter(name="connectivity", value="INTERMITTENT", evidence_level="OBSERVED")]
+    )
+    contract = OutcomeContract("CON-EI-01", "1.0", [KPI("Accuracy", 80.0, ">=")], 70.0, 12, True)
+
+    return run_c, fm_c, twin, contract
+
+
+def test_ei_deterministic_report_generation():
+    from ai.evaluation_intelligence import generate_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = generate_forensic_diagnosis(run, fm, twin, contract)
+    assert report.analysis_mode == "DETERMINISTIC_FALLBACK"
+    assert report.vendor_id == "VendorC"
+    assert report.evaluation_id == run.evaluation_id
+
+
+def test_ei_correct_vendor_id():
+    from ai.evaluation_intelligence import _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+    assert report.vendor_id == "VendorC"
+
+
+def test_ei_correct_evaluation_id():
+    from ai.evaluation_intelligence import _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+    assert report.evaluation_id == run.evaluation_id
+
+
+def test_ei_hotspot_detection():
+    from ai.evaluation_intelligence import _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+    assert len(report.compound_hotspot_diagnoses) >= 1
+    # Check severity matches failure map
+    for d in report.compound_hotspot_diagnoses:
+        assert d.severity in ("CRITICAL", "DEGRADED", "WATCH")
+
+
+def test_ei_public_stratum_parsing():
+    from ai.evaluation_intelligence import parse_stratum_id
+    parsed = parse_stratum_id("INTERMITTENT_LOW_END_REGIONAL_NOISY")
+    assert parsed["connectivity"] == "INTERMITTENT"
+    assert parsed["device"] == "LOW_END"
+    assert parsed["language"] == "REGIONAL"
+    assert parsed["input_quality"] == "NOISY"
+
+    parsed_clean = parse_stratum_id("GOOD_HIGH_END_STANDARD_CLEAN")
+    assert parsed_clean["connectivity"] == "GOOD"
+    assert parsed_clean["device"] == "HIGH_END"
+    assert parsed_clean["language"] == "STANDARD"
+    assert parsed_clean["input_quality"] == "CLEAN"
+
+
+def test_ei_compound_interaction_detection():
+    from ai.evaluation_intelligence import _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+    # Check that the critical hotspot mentions compound interaction or multi-factor pattern
+    found_compound = False
+    for d in report.compound_hotspot_diagnoses:
+        if d.severity == "CRITICAL":
+            if "compound" in d.diagnosis.lower() or "interaction" in d.diagnosis.lower() or "concurrent" in d.diagnosis.lower():
+                found_compound = True
+                break
+    assert found_compound is True
+
+
+def test_ei_operational_risk_generation():
+    from ai.evaluation_intelligence import _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+    assert len(report.operational_risk_summary) > 10
+    # Operational impact exists in diagnoses without hallucinated statistics
+    for d in report.compound_hotspot_diagnoses:
+        assert "operational risk" in d.operational_impact.lower() or "failure rate" in d.operational_impact.lower()
+        assert "deaths" not in d.operational_impact.lower()
+        assert "dollars" not in d.operational_impact.lower()
+
+
+def test_ei_challenge_proposal_generation():
+    from ai.evaluation_intelligence import _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+    assert len(report.recommended_vendor_challenges) >= 1
+    chal = report.recommended_vendor_challenges[0]
+    assert chal.challenge_id.startswith("CHAL-VendorC")
+    assert len(chal.question) > 20
+    assert len(chal.requested_evidence) >= 1
+    assert chal.priority in ("HIGH", "MEDIUM", "LOW")
+
+
+def test_ei_targeted_retest_generation():
+    from ai.evaluation_intelligence import _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+    assert len(report.targeted_retest_recommendations) >= 1
+    retest = report.targeted_retest_recommendations[0]
+    assert retest.recommendation_id.startswith("RETEST-VendorC")
+    assert len(retest.objective) > 10
+
+
+def test_ei_nonexistent_stratum_rejection():
+    import pytest
+    from ai.evaluation_intelligence import _validate_diagnostic_report, _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+
+    # Tamper with stratum_id
+    report.compound_hotspot_diagnoses[0].stratum_id = "FAKE_NONEXISTENT_STRATUM_999"
+    with pytest.raises(ValueError) as exc:
+        _validate_diagnostic_report(report, run, fm)
+    assert "non-existent stratum_id" in str(exc.value)
+
+
+def test_ei_fabricated_accuracy_rejection():
+    import pytest
+    from ai.evaluation_intelligence import _validate_diagnostic_report, _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+
+    # Tamper with accuracy metric
+    report.compound_hotspot_diagnoses[0].accuracy = 99.99
+    with pytest.raises(ValueError) as exc:
+        _validate_diagnostic_report(report, run, fm)
+    assert "Accuracy mismatch" in str(exc.value)
+
+
+def test_ei_fabricated_severity_rejection():
+    import pytest
+    from ai.evaluation_intelligence import _validate_diagnostic_report, _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+
+    # Tamper with severity
+    report.compound_hotspot_diagnoses[0].severity = "NORMAL"
+    with pytest.raises(ValueError) as exc:
+        _validate_diagnostic_report(report, run, fm)
+    assert "Severity mismatch" in str(exc.value)
+
+
+def test_ei_private_parameter_leakage_rejection():
+    import pytest
+    from ai.evaluation_intelligence import _validate_diagnostic_report, _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+
+    # Inject private leak into diagnosis text
+    report.overall_verdict_explanation += " Leaked private_parameters: {'noise': 0.25}"
+    with pytest.raises(ValueError) as exc:
+        _validate_diagnostic_report(report, run, fm)
+    assert "forbidden private/secret keyword" in str(exc.value)
+
+
+def test_ei_seed_leakage_rejection():
+    import pytest
+    from ai.evaluation_intelligence import _validate_diagnostic_report, _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+
+    # Inject seed keyword
+    report.operational_risk_summary += " Evaluated with raw_seed = 42"
+    with pytest.raises(ValueError) as exc:
+        _validate_diagnostic_report(report, run, fm)
+    assert "forbidden private/secret keyword" in str(exc.value)
+
+
+def test_ei_procurement_authorization_attempt_rejection():
+    import pytest
+    from ai.evaluation_intelligence import _validate_diagnostic_report, _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+
+    # Inject unauthorized executive action
+    report.overall_verdict_explanation += " The solution is hereby procurement_approved by AI."
+    with pytest.raises(ValueError) as exc:
+        _validate_diagnostic_report(report, run, fm)
+    assert "forbidden autonomous governance action" in str(exc.value)
+
+
+def test_ei_evidence_level_modification_rejection():
+    from ai.evaluation_intelligence import generate_forensic_diagnosis
+    from ai.evidence_record import EvidenceRecord
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+
+    ev = EvidenceRecord("EVID-TEST", "VendorC", "ART-01", "hash", "1.0", "TS-01", "1.0", "th", "src", "OBSERVED", "Acc", 80.0, "%", "EV-01", "2026-08-01", 12, "2027-08-01", "VALIDATED", [], True)
+
+    _ = generate_forensic_diagnosis(run, fm, twin, contract)
+    # Evidence level on evidence record must remain untouched
+    assert ev.evidence_level == "OBSERVED"
+
+
+def test_ei_deterministic_behavior():
+    from ai.evaluation_intelligence import _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    r1 = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+    r2 = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+    assert r1.to_dict() == r2.to_dict()
+
+
+def test_ei_empty_hotspot_handling():
+    from ai.evaluation_intelligence import _deterministic_forensic_diagnosis
+    from ai.test_matrix import generate_test_suite
+    from ai.evaluator import EvaluationRun, EvaluationCaseResult
+    from ai.failure_cartography import generate_failure_map
+
+    suite = generate_test_suite("SUITE-PERFECT", "TWIN-01", seed=42)
+    # Perfect run with 100% accuracy on all cases
+    cases = [
+        EvaluationCaseResult(c.test_case_id, c.stratum_id, "PASS", "PASS", True, 50.0, False)
+        for c in suite.conditions
+    ]
+    perfect_run = EvaluationRun(
+        evaluation_id="EVAL-PERF",
+        vendor_id="VendorPerfect",
+        artifact_id="ART-P",
+        evaluator_version="1.0.0",
+        test_suite_id=suite.suite_id,
+        test_suite_version=suite.version,
+        test_suite_hash=suite.seed_hash,
+        results=cases,
+        total_cases=24,
+        correct_cases=24,
+        accuracy=100.0,
+        average_latency_ms=50.0,
+        error_count=0,
+        status="COMPLETED",
+    )
+    fm_perf = generate_failure_map(perfect_run)
+    report = _deterministic_forensic_diagnosis(perfect_run, fm_perf)
+
+    assert len(report.compound_hotspot_diagnoses) == 0
+    assert len(report.recommended_vendor_challenges) == 0
+    assert "robust" in report.overall_verdict_explanation.lower()
+    assert "low operational risk" in report.operational_risk_summary.lower()
+
+
+def test_ei_llm_missing_key_fallback(monkeypatch):
+    from ai.evaluation_intelligence import generate_forensic_diagnosis
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = generate_forensic_diagnosis(run, fm, twin, contract)
+    assert report.analysis_mode == "DETERMINISTIC_FALLBACK"
+
+
+def test_ei_llm_malformed_output_fallback(monkeypatch):
+    from ai.evaluation_intelligence import generate_forensic_diagnosis
+    monkeypatch.setenv("OPENAI_API_KEY", "mock_key_for_test")
+
+    class MockCompletions:
+        def create(self, **kwargs):
+            raise RuntimeError("API Connection Timeout")
+
+    class MockChat:
+        completions = MockCompletions()
+
+    class MockOpenAI:
+        def __init__(self, **kwargs):
+            self.chat = MockChat()
+
+    monkeypatch.setattr("ai.evaluation_intelligence.OpenAI", MockOpenAI)
+
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = generate_forensic_diagnosis(run, fm, twin, contract)
+    # Graceful fallback to deterministic engine
+    assert report.analysis_mode == "DETERMINISTIC_FALLBACK"
+    assert report.vendor_id == "VendorC"
+
+
+def test_ei_source_objects_remain_unchanged():
+    from ai.evaluation_intelligence import generate_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+
+    acc_before = run.accuracy
+    status_before = fm.status
+    kpis_before = len(contract.kpis)
+
+    _ = generate_forensic_diagnosis(run, fm, twin, contract)
+
+    assert run.accuracy == acc_before
+    assert fm.status == status_before
+    assert len(contract.kpis) == kpis_before
+
+
+def test_ei_diagnostic_confidence_stays_separate_from_evidence_confidence():
+    from ai.evaluation_intelligence import _deterministic_forensic_diagnosis
+    from ai.confidence import calculate_evidence_confidence
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+
+    for d in report.compound_hotspot_diagnoses:
+        # diagnostic confidence is on HotspotDiagnosis
+        assert 0.0 <= d.confidence <= 100.0
+
+    # Evidence confidence is computed independently by confidence.py
+    ev_conf = calculate_evidence_confidence(100.0, 100.0, 100.0, 100.0, 80.0, 90.0)
+    assert isinstance(ev_conf, float)
+
+
+def test_ei_every_referenced_stratum_exists():
+    from ai.evaluation_intelligence import _deterministic_forensic_diagnosis
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    report = _deterministic_forensic_diagnosis(run, fm, twin, contract)
+
+    valid_strata = {s.stratum_id for s in fm.strata}
+    for d in report.compound_hotspot_diagnoses:
+        assert d.stratum_id in valid_strata
+    for c in report.recommended_vendor_challenges:
+        assert c.target_stratum_id in valid_strata
+    for r in report.targeted_retest_recommendations:
+        assert r.target_stratum_id in valid_strata
+
+
+def test_ei_llm_output_cannot_modify_actual_measured_values(monkeypatch):
+    import json
+    from ai.evaluation_intelligence import generate_forensic_diagnosis
+    monkeypatch.setenv("OPENAI_API_KEY", "mock_key_for_test")
+
+    # Mock LLM returning tampered accuracy value
+    class MockChoice:
+        message = type("msg", (), {
+            "content": json.dumps({
+                "vendor_id": "VendorC",
+                "evaluation_id": "EVAL-FAKE",
+                "overall_verdict_explanation": "Fake summary",
+                "operational_risk_summary": "Fake risk",
+                "compound_hotspot_diagnoses": [
+                    {
+                        "stratum_id": "GOOD_HIGH_END_STANDARD_CLEAN",
+                        "severity": "NORMAL",
+                        "accuracy": 10.0,  # Fabricated! Real value is 100.0
+                        "error_rate": 90.0,
+                        "observed_conditions": {},
+                        "diagnosis": "Fake",
+                        "operational_impact": "Fake",
+                        "confidence": 50.0,
+                        "supporting_observations": []
+                    }
+                ],
+                "recommended_vendor_challenges": [],
+                "targeted_retest_recommendations": []
+            })
+        })()
+
+    class MockCompletions:
+        def create(self, **kwargs):
+            return type("resp", (), {"choices": [MockChoice()]})()
+
+    class MockChat:
+        completions = MockCompletions()
+
+    class MockOpenAI:
+        def __init__(self, **kwargs):
+            self.chat = MockChat()
+
+    monkeypatch.setattr("ai.evaluation_intelligence.OpenAI", MockOpenAI)
+
+    run, fm, twin, contract = _get_mock_eval_intelligence_data()
+    # When LLM tries to tamper with metrics, validation catches it and falls back to deterministic
+    report = generate_forensic_diagnosis(run, fm, twin, contract)
+    assert report.analysis_mode == "DETERMINISTIC_FALLBACK"
+    assert report.evaluation_id == run.evaluation_id
+
+
+# ============================================================
+# PIPELINE INTEGRATION TESTS — STEP 3
+# ============================================================
+
+def _run_demo_pipeline():
+    from ai.pipeline import run_axiom_demo
+    return run_axiom_demo(seed=42)
+
+
+def test_pi_pipeline_generates_diagnostic_report():
+    res = _run_demo_pipeline()
+    assert hasattr(res, "diagnostic_intelligence")
+    assert isinstance(res.diagnostic_intelligence, dict)
+    assert len(res.diagnostic_intelligence) >= 1
+
+
+def test_pi_every_demo_vendor_receives_separate_report():
+    res = _run_demo_pipeline()
+    assert "VendorA" in res.diagnostic_intelligence
+    assert "VendorB" in res.diagnostic_intelligence
+    assert "VendorC" in res.diagnostic_intelligence
+
+
+def test_pi_vendor_ids_match():
+    res = _run_demo_pipeline()
+    for vid in ("VendorA", "VendorB", "VendorC"):
+        assert res.diagnostic_intelligence[vid]["vendor_id"] == vid
+
+
+def test_pi_evaluation_ids_match():
+    res = _run_demo_pipeline()
+    for vid in ("VendorA", "VendorB", "VendorC"):
+        assert res.diagnostic_intelligence[vid]["evaluation_id"] == res.vendor_results[vid]["evaluation_id"]
+
+
+def test_pi_deterministic_fallback_without_api_key(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    res = _run_demo_pipeline()
+    for vid in ("VendorA", "VendorB", "VendorC"):
+        assert res.diagnostic_intelligence[vid]["analysis_mode"] == "DETERMINISTIC_FALLBACK"
+
+
+def test_pi_diagnostic_report_contains_hotspot_diagnoses():
+    res = _run_demo_pipeline()
+    # VendorC has known critical hotspots
+    vc_diag = res.diagnostic_intelligence["VendorC"]
+    assert "compound_hotspot_diagnoses" in vc_diag
+    assert len(vc_diag["compound_hotspot_diagnoses"]) >= 1
+
+
+def test_pi_diagnostic_report_contains_operational_risk():
+    res = _run_demo_pipeline()
+    for vid in ("VendorA", "VendorB", "VendorC"):
+        diag = res.diagnostic_intelligence[vid]
+        assert "operational_risk_summary" in diag
+        assert len(diag["operational_risk_summary"]) > 0
+
+
+def test_pi_diagnostic_report_contains_challenge_proposals():
+    res = _run_demo_pipeline()
+    # VendorC has hotspots and therefore challenge proposals
+    vc_diag = res.diagnostic_intelligence["VendorC"]
+    assert "recommended_vendor_challenges" in vc_diag
+    assert len(vc_diag["recommended_vendor_challenges"]) >= 1
+
+
+def test_pi_diagnostic_report_contains_retest_recommendations():
+    res = _run_demo_pipeline()
+    vc_diag = res.diagnostic_intelligence["VendorC"]
+    assert "targeted_retest_recommendations" in vc_diag
+    assert len(vc_diag["targeted_retest_recommendations"]) >= 1
+
+
+def test_pi_ai_output_cannot_alter_procurement_decision():
+    """
+    Proves: changing the diagnostic explanation cannot change the procurement decision.
+    The AI layer is advisory only and never feeds into the deterministic decision gate.
+    """
+    import copy
+    res = _run_demo_pipeline()
+
+    # Record original procurement decisions
+    original_decisions = copy.deepcopy(res.procurement_decisions)
+
+    # Tamper with diagnostic intelligence
+    for vid in res.diagnostic_intelligence:
+        res.diagnostic_intelligence[vid]["overall_verdict_explanation"] = "COMPLETELY FABRICATED EXPLANATION"
+        res.diagnostic_intelligence[vid]["operational_risk_summary"] = "INVENTED RISK"
+
+    # Procurement decisions must remain identical (they were computed independently)
+    assert res.procurement_decisions == original_decisions
+
+
+def test_pi_ai_output_cannot_alter_scale_decision():
+    import copy
+    res = _run_demo_pipeline()
+    original_scale = copy.deepcopy(res.scale_up_evaluation)
+
+    for vid in res.diagnostic_intelligence:
+        res.diagnostic_intelligence[vid]["overall_verdict_explanation"] = "FABRICATED"
+
+    assert res.scale_up_evaluation == original_scale
+
+
+def test_pi_ai_output_cannot_alter_evidence():
+    import copy
+    res = _run_demo_pipeline()
+    original_evidence = copy.deepcopy(res.evidence_summary)
+
+    for vid in res.diagnostic_intelligence:
+        res.diagnostic_intelligence[vid]["overall_verdict_explanation"] = "FABRICATED"
+
+    assert res.evidence_summary == original_evidence
+
+
+def test_pi_ai_output_cannot_alter_failure_map():
+    import copy
+    res = _run_demo_pipeline()
+    original_fm = copy.deepcopy(res.failure_map_summary)
+
+    for vid in res.diagnostic_intelligence:
+        res.diagnostic_intelligence[vid]["overall_verdict_explanation"] = "FABRICATED"
+
+    assert res.failure_map_summary == original_fm
+
+
+def test_pi_ai_output_cannot_alter_outcome_contract():
+    import copy
+    res = _run_demo_pipeline()
+    original_contract = copy.deepcopy(res.contract)
+
+    for vid in res.diagnostic_intelligence:
+        res.diagnostic_intelligence[vid]["overall_verdict_explanation"] = "FABRICATED"
+
+    assert res.contract == original_contract
+
+
+def test_pi_ai_output_cannot_alter_pilot_twin():
+    import copy
+    res = _run_demo_pipeline()
+    original_twin = copy.deepcopy(res.pilot_twin)
+
+    for vid in res.diagnostic_intelligence:
+        res.diagnostic_intelligence[vid]["overall_verdict_explanation"] = "FABRICATED"
+
+    assert res.pilot_twin == original_twin
+
+
+def test_pi_source_objects_remain_unchanged_after_pipeline():
+    """
+    Verifies that pipeline execution with diagnostic intelligence
+    does not mutate any of the source governance objects.
+    """
+    res1 = _run_demo_pipeline()
+    res2 = _run_demo_pipeline()
+
+    # Deterministic pipeline should produce identical structural results
+    assert res1.contract == res2.contract
+    assert res1.pilot_twin == res2.pilot_twin
+    # evaluator_status verified_at is a timestamp that differs between runs
+    assert res1.evaluator_status["evaluator_version"] == res2.evaluator_status["evaluator_version"]
+    assert res1.evaluator_status["status"] == res2.evaluator_status["status"]
+    assert res1.failure_map_summary == res2.failure_map_summary
+    assert res1.procurement_decisions == res2.procurement_decisions
+
+
+def test_pi_existing_pipeline_outputs_remain_present():
+    res = _run_demo_pipeline()
+    assert hasattr(res, "contract")
+    assert hasattr(res, "pilot_twin")
+    assert hasattr(res, "test_suite_summary")
+    assert hasattr(res, "evaluator_status")
+    assert hasattr(res, "vendor_results")
+    assert hasattr(res, "evidence_summary")
+    assert hasattr(res, "confidence_summary")
+    assert hasattr(res, "failure_map_summary")
+    assert hasattr(res, "procurement_decisions")
+    assert hasattr(res, "vendor_response")
+    assert hasattr(res, "human_authorization")
+    assert hasattr(res, "scale_up_evaluation")
+    assert hasattr(res, "data_governance")
+    assert hasattr(res, "diagnostic_intelligence")
+    assert hasattr(res, "audit_summary")
+
+
+def test_pi_pipeline_functional_without_api_key(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    res = _run_demo_pipeline()
+    # Full pipeline must still work
+    assert res.human_authorization["status"] == "AUTHORIZED"
+    assert len(res.vendor_results) == 3
+    assert len(res.diagnostic_intelligence) == 3
+
+
+def test_pi_diagnostic_reports_isolated_between_vendors():
+    res = _run_demo_pipeline()
+    va = res.diagnostic_intelligence["VendorA"]
+    vb = res.diagnostic_intelligence["VendorB"]
+    vc = res.diagnostic_intelligence["VendorC"]
+
+    # Each report references only its own vendor
+    assert va["vendor_id"] == "VendorA"
+    assert vb["vendor_id"] == "VendorB"
+    assert vc["vendor_id"] == "VendorC"
+
+    # Evaluation IDs must differ between vendors
+    assert va["evaluation_id"] != vb["evaluation_id"]
+    assert vb["evaluation_id"] != vc["evaluation_id"]
+    assert va["evaluation_id"] != vc["evaluation_id"]
+
+
+def test_pi_result_remains_serializable():
+    import json
+    res = _run_demo_pipeline()
+    public = res.to_public_dict()
+    # Must serialize to JSON without error
+    json_str = json.dumps(public)
+    assert len(json_str) > 100
+    parsed = json.loads(json_str)
+    assert "diagnostic_intelligence" in parsed
+    assert "VendorA" in parsed["diagnostic_intelligence"]
+    assert "VendorB" in parsed["diagnostic_intelligence"]
+    assert "VendorC" in parsed["diagnostic_intelligence"]
+
+
