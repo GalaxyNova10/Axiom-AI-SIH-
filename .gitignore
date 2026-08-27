@@ -45,3 +45,9 @@ Desktop.ini
 
 # Log files
 *.log
+
+# Frontend build artifacts and dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
