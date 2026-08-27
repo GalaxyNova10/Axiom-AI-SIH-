@@ -11,18 +11,13 @@ import {
   ArrowUpRight, ShieldCheck, FileText, Database, Hexagon,
 } from 'lucide-react';
 
-const evalId = 'demo';
-
 const navItems = [
-  { name: 'Overview',        path: '/',                                          icon: LayoutDashboard },
-  { name: 'Vendors',         path: `/evaluation/${evalId}/vendors`,              icon: Users },
-  { name: 'Failure Map',     path: `/evaluation/${evalId}/failure-map`,          icon: Map },
-  { name: 'Diagnostics',     path: `/evaluation/${evalId}/diagnostics`,          icon: Brain },
-  { name: 'Decision',        path: `/evaluation/${evalId}/decision`,             icon: Gavel },
-  { name: 'Scale-Up',        path: `/evaluation/${evalId}/scale-up`,             icon: ArrowUpRight },
-  { name: 'Authorization',   path: `/evaluation/${evalId}/authorization`,        icon: ShieldCheck },
-  { name: 'Audit Trail',     path: `/evaluation/${evalId}/audit`,                icon: FileText },
-  { name: 'Data Governance', path: `/evaluation/${evalId}/governance`,           icon: Database },
+  { name: 'Dashboard',       path: '/',                       icon: LayoutDashboard },
+  { name: 'Diagnostics',     path: '/diagnostics',            icon: Brain },
+  { name: 'Scale-Up',        path: '/scale-up',               icon: ArrowUpRight },
+  { name: 'Authorization',   path: '/authorization',          icon: ShieldCheck },
+  { name: 'Audit Trail',     path: '/audit',                  icon: FileText },
+  { name: 'Data Governance', path: '/governance',             icon: Database },
 ];
 
 export default function Sidebar() {

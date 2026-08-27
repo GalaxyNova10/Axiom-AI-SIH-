@@ -1,7 +1,7 @@
 // ============================================================
 // Axiom AI — Data Governance & Privacy Framework
 // ============================================================
-import { useState, useEffect } from 'motion';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Database, ShieldCheck, Lock, Eye, AlertTriangle, ArrowRight, FileKey } from 'lucide-react';
 import GlassCard from '../components/GlassCard';

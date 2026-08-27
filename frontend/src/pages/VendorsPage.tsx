@@ -5,7 +5,7 @@ import StatusBadge from '../components/StatusBadge';
 import GlassCard from '../components/GlassCard';
 import VendorRadarCompare from '../components/charts/VendorRadarChart';
 import AccuracyBarChart from '../components/charts/AccuracyBarChart';
-import { ChevronRight, BarChart2, Cpu, ShieldCheck, Sparkles } from 'lucide-react';
+import { ChevronRight, BarChart2, Cpu } from 'lucide-react';
 import type { VendorScorecard, VendorFailureMap } from '../types/api';
 
 const container = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };

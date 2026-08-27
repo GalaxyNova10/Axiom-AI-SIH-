@@ -41,7 +41,14 @@ export default function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/dashboard" element={<Navigate to="/" replace />} />
 
-            {/* Evaluation routes */}
+            {/* Direct fintech evaluation routes */}
+            <Route path="/diagnostics" element={<DiagnosticsPage />} />
+            <Route path="/scale-up" element={<ScaleUpPage />} />
+            <Route path="/authorization" element={<AuthorizationPage />} />
+            <Route path="/audit" element={<AuditPage />} />
+            <Route path="/governance" element={<GovernancePage />} />
+
+            {/* Legacy evaluation routes (still use DemoContext) */}
             <Route path="/evaluation/:evaluationId/vendors" element={<VendorsPage />} />
             <Route path="/evaluation/:evaluationId/vendors/:vendorId" element={<VendorDetailPage />} />
             <Route path="/evaluation/:evaluationId/failure-map" element={<FailureMapPage />} />

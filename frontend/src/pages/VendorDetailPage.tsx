@@ -4,7 +4,7 @@ import { useDemoContext } from '../context/DemoContext';
 import StatusBadge from '../components/StatusBadge';
 import GlassCard from '../components/GlassCard';
 import AnimatedNumber from '../components/AnimatedNumber';
-import { Target, ShieldAlert, AlertTriangle, CheckCircle, XCircle, Cpu, Landmark, Sparkles, Scale, FileText } from 'lucide-react';
+import { Target, ShieldAlert, AlertTriangle, CheckCircle, XCircle, Cpu, Landmark } from 'lucide-react';
 import type { VendorScorecard, VendorFailureMap, DiagnosticReport, FailureHotspot } from '../types/api';
 
 const container = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
